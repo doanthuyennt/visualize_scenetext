@@ -324,12 +324,17 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 gtRect = Rectangle(*points)
                 gtPol = rectangle_to_polygon(gtRect)
                 points = polygon_to_points(gtPol)
+                gtPols.append(gtPol)
             else:
                 ############## Modify by Tran Thuyen 21/05/2021 ##############
                 # gtPol = polygon_from_points(points)
-                gtPol = MY_POLY(points).make_polygon_obj()
+                # gtPol = MY_POLY(points).make_polygon_obj()
+                try:       
+                    gtPol = MY_POLY(points).make_polygon_obj()
+                    gtPols.append(gtPol)
+                except:
+                    print(points,"\t",resFile)
                 ##############################################################
-            gtPols.append(gtPol)
             if dontCare:
                 gtDontCarePolsNum.append( len(gtPols)-1 )
                 gtPolPoints.append(points)
@@ -358,7 +363,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
 
             pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
-            print(transcriptionsList)
+            #print(transcriptionsList)
             for n in range(len(pointsList)):
                 points = pointsList[n]
                 transcription = transcriptionsList[n]
@@ -367,16 +372,16 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                     detRect = Rectangle(*points)
                     detPol = rectangle_to_polygon(detRect)
                     points = polygon_to_points(detPol)
+                    detPols.append(detPol)
                 else:
                     ############## Modify by Tran Thuyen 21/05/2021 ##############
                     # detPol = polygon_from_points(points)
                     try:       
                         detPol = MY_POLY(points).make_polygon_obj()
-                    except ValueError:
+                        detPols.append(detPol)
+                    except:
                         print(points,"\t",resFile)
-                        input()
                     ##############################################################
-                detPols.append(detPol)
                 detPolPoints.append(points)
                 
             evaluationLog += "DET polygons: " + str(len(detPols))
@@ -627,7 +632,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
 
     ### Assign jobs
     TASKS = [(evalute, (resFile,gt,subm,evaluationParams)) for resFile in gt]
-    with mp.Pool(processes=4) as pool:
+    with mp.Pool(processes=PARAMS.NUM_WORKERS) as pool:
         with tqdm(total = len(gt)) as pbar:
             for results in pool.map(calculatestar,TASKS):
                 methodRecallSum_perfile,methodPrecisionSum_perfile,numGlobalCareGt_perfile,numGlobalCareDet_perfile,\
