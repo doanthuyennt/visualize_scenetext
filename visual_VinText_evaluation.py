@@ -518,11 +518,11 @@ if __name__=='__main__':
     app.jinja_env.globals.update(sorted_samplesData=sorted_samplesData)
     app.jinja_env.globals.update(custom_json_filter=custom_json_filter)
 
-    host = '127.0.0.1'
-    port = 8081
+    port = PARAMS.PORT
+    host = PARAMS.HOST
     scheduler.init_app(app)
     scheduler.start()
-    app.run(host=host, port=port, debug=True)
+    app.run(host=host,port=port, debug=True)
     
     
     
