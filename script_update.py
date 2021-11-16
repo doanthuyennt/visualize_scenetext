@@ -12,6 +12,7 @@ from arg_parser import PARAMS
 from tqdm import tqdm
 import multiprocess as mp
 import editdistance
+import cv2
 def evaluation_imports():
     """
     evaluation_imports: Dictionary ( key = module name , value = alias  )  with python modules used in the evaluation. 
@@ -184,7 +185,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             for gtNum, gtChars in enumerate(gtCharPoints):
                 if matchMat[gtNum, detNum] == 1:
                     for gtCharNum, gtChar in enumerate(gtChars):
-                        if detPol.isInside(gtChar[0], gtChar[1]):
+                        if detPol.polygon.isInside(gtChar[0], gtChar[1]):
                             gtCharCounts[gtNum][detNum][gtCharNum] = 1
 
     def one_to_one_match(row, col,recallMat,precisionMat):
@@ -245,7 +246,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         if many_sum >= evaluationParams['AREA_PRECISION_CONSTRAINT'] and len(gtRects) >= 2:
             pivots = []
             for matchGt in gtRects:
-                pG = gtPols[matchGt]
+                pG = gtPols[matchGt].polygon
                 pivots.append([get_midpoints(pG[0][0], pG[0][3]), pG.center()])
             for i in range(len(pivots)):
                 for k in range(len(pivots)):
@@ -353,7 +354,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             else:
                 ############## Modify by Tran Thuyen 21/05/2021 ##############
                 # gtPol = polygon_from_points(points)
-                gtPol = MY_POLY(points,transcription).make_polygon_obj()
+                gtPol = MY_POLY(points,transcription,art)
                 ##############################################################
             gtPols.append(gtPol)
             if dontCare:
@@ -363,7 +364,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 gtCharPoints.append([])
             else:
                 gtCharSize = len(transcription)
-                aspect_ratio = gtPol.aspectRatio()
+                aspect_ratio = gtPol.polygon.aspectRatio()
                 if aspect_ratio > 1.5:
                     points_ver =  [points[6], points[7], points[0], points[1], points[2], points[3], points[4], points[5]]
                     gtPolPoints.append(points_ver)
@@ -378,8 +379,8 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         # GT Don't Care overlap
         for DontCare in gtDontCarePolsNum:
             for gtNum in list(set(range(len(gtPols))) - set(gtDontCarePolsNum)):
-                if get_intersection(gtPols[gtNum], gtPols[DontCare]) > 0:
-                    gtPols[DontCare] -= gtPols[gtNum]
+                if get_intersection(gtPols[gtNum].polygon, gtPols[DontCare].polygon) > 0:
+                    gtPols[DontCare].polygon -= gtPols[gtNum].polygon
 
         if resFile in subm:
             
@@ -422,8 +423,8 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 for gtNum in range(len(gtPols)):
                     detCharCounts = []
                     for detNum in range(len(detPols)):
-                        pG = gtPols[gtNum]
-                        pD = detPols[detNum]
+                        pG = gtPols[gtNum].polygon
+                        pD = detPols[detNum].polygon
                         intersected_area = get_intersection(pD,pG)
                         recallMat[gtNum,detNum] = 0 if pG.area()==0 else intersected_area / pG.area()
                         precisionMat[gtNum,detNum] = 0 if pD.area()==0 else intersected_area / pD.area()
@@ -448,11 +449,11 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         # many-to-one for mixed DC and non-DC
                         for gtNum in gtDontCarePolsNum:
                             if recallMat[gtNum, detNum] > 0:
-                                detPols[detNum] -= gtPols[gtNum]
+                                detPols[detNum].polygon -= gtPols[gtNum].polygon
                     for dontCarePol in gtDontCarePolsNum_NED:
-                        dontCarePol = gtPols[dontCarePol]
-                        intersected_area = get_intersection(dontCarePol,detPol)
-                        pdDimensions = detPol.area()
+                        dontCarePol = gtPols[dontCarePol].polygon
+                        intersected_area = get_intersection(dontCarePol,detPol.polygon)
+                        pdDimensions = detPol.polygon.area()
                         precision = 0 if pdDimensions == 0 else intersected_area / pdDimensions
                         if (precision > evaluationParams['AREA_PRECISION_CONSTRAINT'] ):
                             detDontCarePolsNum_NED.append( len(detPols)-1 )
@@ -462,8 +463,8 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 # Recalculate matrices
                 for gtNum in range(len(gtPols)):
                     for detNum in range(len(detPols)):
-                        pG = gtPols[gtNum]
-                        pD = detPols[detNum]
+                        pG = gtPols[gtNum].polygon
+                        pD = detPols[detNum].polygon
                         intersected_area = get_intersection(pD,pG)
                         recallMat[gtNum,detNum] = 0 if pG.area()==0 else intersected_area / pG.area()
                         precisionMat[gtNum,detNum] = 0 if pD.area()==0 else intersected_area / pD.area()
@@ -526,7 +527,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         if gtNum not in gtDontCarePolsNum and detNum not in detDontCarePolsNum :
                             match = one_to_one_match(gtNum, detNum,recallMat,precisionMat)
                             if match:
-                                normDist = center_distance(gtPols[gtNum], detPols[detNum]);
+                                normDist = center_distance(gtPols[gtNum].polygon, detPols[detNum].polygon);
                                 normDist /= diag(gtPolPoints[gtNum]) + diag(detPolPoints[detNum]);
                                 normDist *= 2.0;
                                 if normDist < evaluationParams['EV_PARAM_IND_CENTER_DIFF_THR'] :
@@ -742,6 +743,7 @@ class MY_POLY():
         self.points = points
         self.transcription = transcription
         self.art = art
+        self.polygon = self.make_polygon_obj()
     def make_polygon_obj(self):
         
         point_x = self.points[0::2]

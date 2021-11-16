@@ -36,12 +36,23 @@ app.secret_key = "secret key"
 gTArchivePath = os.path.join(".","gt","gt.zip")
 gTArchive = zipfile.ZipFile(gTArchivePath,'r')
 
+
+dbPath = os.path.join(".","output","submits")
+conn = sqlite3.connect(dbPath)
+cursor = conn.cursor()
+cursor.execute("""CREATE TABLE IF NOT EXISTS submission(id integer primary key autoincrement, title varchar(50), sumbit_date varchar(12),results TEXT)""")
+conn.commit()
+
+cursor.execute('SELECT id,title,sumbit_date,results FROM submission')
+sumbData = cursor.fetchall()
+conn.close()
+
 def image_name_to_id(name):
     # m = re.match(image_name_to_id_str,name)
     # if m == None:
     #     return False
     # id = m.group(1)
-    id = name.replace('.jpg', '').replace('.png', '').replace('.gif', '').replace('.bmp', '').replace('.json', '')
+    id = name.replace('.jpg', '').replace('.png', '').replace('.gif', '').replace('.bmp', '').replace('.json', '').replace('.jpeg', '')
     if id+'.json' not in gTArchive.namelist():
         return False
     return id
@@ -102,7 +113,7 @@ def delete_method():
     dbPath = os.path.join(".","output","submits")
     conn = sqlite3.connect(dbPath)
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM submission WHERE id=?',(id))
+    cursor.execute('DELETE FROM submission WHERE id=?',(id,))
     conn.commit()
     conn.close()
     
@@ -369,7 +380,7 @@ def image_thumb():
     image.thumbnail(maxsize)
     output = io.BytesIO()
 	
-    if ext=="jpg":
+    if ext=="jpg" or ext=="jpeg":
             im_format = "JPEG"
             header = "image/jpeg"
             image.save(output,im_format, quality=80, optimize=True, progressive=True)
@@ -400,7 +411,7 @@ def image():
     f = io.BytesIO(data)
     image = Image.open(f)
     output = io.BytesIO()
-    if ext=="jpg":
+    if ext=="jpg" or ext=="jpeg":
             im_format = "JPEG"
             header = "image/jpeg"
             image.save(output,im_format, quality=80, optimize=True, progressive=True)
