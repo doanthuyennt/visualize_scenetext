@@ -14,7 +14,7 @@
 }
 
 div.container_canvas{
-    width: 50%;
+    width: 33%;
     vertical-align: top;
     position: relative;
     height: 400px;
@@ -30,6 +30,23 @@ div.container_canvas h3, #div_sample_info h3{
     line-height: 29px;
 }
 
+div.container_canvas_rec{
+    width: 33%;
+    vertical-align: top;
+    position: relative;
+    height: 400px;
+    display: inline-block;  
+    border: 1px solid #999;
+    box-sizing: border-box;
+    overflow: auto;
+}
+div.container_canvas_rec h3, #div_sample_info h3{
+    margin: 0px;
+    padding: 0px 10px;
+    background-color: #eee;
+    border-bottom: 1px solid #999;
+    line-height: 29px;
+}
 
 #img_gt_image2{
     display: none;

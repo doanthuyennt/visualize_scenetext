@@ -258,10 +258,13 @@ def sample():
             for k,v in sample_params.items():
                 sampleResults[k] = 0.0
         samplesValues.append( sampleResults )
-
-
+    art = ''
+    print(list(request.args.keys()))
+    if 'art' in list(request.args.keys()):
+        art = request.args['art']
     # for d in dir(request):
     #     print(d)
+    # from config.config import constraints
     vars = {
                 'acronym':acronym,
                 'title':title + ' - Sample ' + str(sample) + ' : ' + images_list[sample-1],
@@ -271,7 +274,11 @@ def sample():
                 'samplesValues':samplesValues,
                 'sample_params':sample_params,
                 'customJS':customJS,
-                'customCSS':customCSS
+                'customCSS':customCSS,
+                # 'constraints':constraints,
+                'art':art,
+                'methodId':methodId,
+                # 'artList':constraints
             }
     return render_template('sample.html',vars=vars)
 
@@ -334,9 +341,12 @@ def evaluate():
             os.remove(p['s'])
 
         submFile.save(p['s'])
-
+        
+        import random
+        import string
+        save_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         module = importlib.import_module(evaluation_script )
-        resDict = rrc_evaluation_funcs.main_evaluation(p,module.default_evaluation_params,module.validate_data,evaluate_method)
+        resDict = rrc_evaluation_funcs.main_evaluation(p,module.default_evaluation_params,module.validate_data,evaluate_method,save_name=save_name)
 
         
         if resDict['calculated']==True:
@@ -354,7 +364,7 @@ def evaluate():
             id = cursor.lastrowid
 
             os.rename(p['s'], p['s'].replace("subm." + gt_ext,"subm_" + str(id) + "." + gt_ext) )
-            os.rename(p['o'] + "/results.zip", p['o'] + "/results_" + str(id) + ".zip" )
+            os.rename(p['o'] + "/results_{}.zip".format(save_name), p['o'] + "/results_" + str(id) + ".zip" )
 
             conn.close()
 
@@ -455,6 +465,16 @@ def get_sample_info():
     archive = zipfile.ZipFile(submFilePath,'r')
     id = get_sample_id_from_num(int(request.args['sample']))
     results = json.loads(archive.read(id + ".json"))
+    if 'art' in list(request.args.keys()): 
+        art =  request.args['art'] 
+        print(art == 'undefined')
+        print(art)
+        if art != 'undefined':
+            temp = {}
+            for k,v in results.items():
+                if art in k:
+                    temp[k.replace("_ART_"+art,"")] = v
+            results = temp
     return json.dumps(results)
 
 @app.route('/method/', methods=['GET'])

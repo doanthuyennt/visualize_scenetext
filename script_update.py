@@ -27,8 +27,8 @@ def default_evaluation_params():
     default_evaluation_params: Default parameters to use for the validation and evaluation.
     """
     return {
-            'AREA_RECALL_CONSTRAINT' : 0.4,
-            'AREA_PRECISION_CONSTRAINT' :0.4,
+            'AREA_RECALL_CONSTRAINT' : 0.6,
+            'AREA_PRECISION_CONSTRAINT' :0.6,
             'EV_PARAM_IND_CENTER_DIFF_THR': 1,
             'IOU_CONSTRAINT' :0.5,
             'GT_SAMPLE_NAME_2_ID':'.*([0-9]+).*',
@@ -273,7 +273,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             return 0
 
     # global evalute
-    def evalute(resFile,gt,subm,evaluationParams):
+    def evalute(resFile,gt,subm,evaluationParams,validating_art=False,constraint_name=None):
 
         arrGlobalConfidences = []
         arrGlobalMatches = []
@@ -344,9 +344,12 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
         for n in range(len(pointsList)):
             points = pointsList[n]
+            points = list(map(int,points))
             transcription = transcriptionsList[n]
-            art = artList[n]
+            art = True
             dontCare = transcription == "###"
+            if len(transcription) == 0:
+                continue
             if evaluationParams['GT_LTRB']:
                 gtRect = Rectangle(*points)
                 gtPol = rectangle_to_polygon(gtRect)
@@ -386,27 +389,117 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             
             detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
 
-            # pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
-            pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
+            pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
+            # pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
             for n in range(len(pointsList)):
-                points = pointsList[n]
-                transcription = transcriptionsList[n]
-                detTrans.append(transcription)
+                try:
+                    points = pointsList[n]
+                    points = list(map(int,map(float,points)))
+                    transcription = transcriptionsList[n]
+                except:
+                    print(resFile)
+                    continue
                 if evaluationParams['DET_LTRB']:
                     detRect = Rectangle(*points)
                     detPol = rectangle_to_polygon(detRect)
                     points = polygon_to_points(detPol)
+                    detPols.append(detPol)
+                    detPolPoints.append(points)
+                    detTrans.append(transcription)
                 else:
                     ############## Modify by Tran Thuyen 21/05/2021 ##############
                     # detPol = polygon_from_points(points)
                     try:       
-                        detPol = MY_POLY(points,transcription).make_polygon_obj()
-                    except ValueError:
-                        print(points,"\t",resFile)
+                        if len(points) %2 != 0:
+                            points = points[-1]
+                        # print(type(points))
+                        points = np.clip(points,0,a_max = None).tolist()
+                        # points = cv2.boundingRect(np.array(points).astype(int).reshape(-1,2))
+                        # points = list(points)
+                        # points[2] += points[0] 
+                        # points[3] += points[1] 
+                        
+                        # detRect = Rectangle(*points)
+                        # detPol = rectangle_to_polygon(detRect)
+                        # points = polygon_to_points(detPol)
+                        # detPols.append(detPol)
+                        # detPolPoints.append(points)                        
+                        
+                        detPol = MY_POLY(points,transcription)
+                        
+                        overlapList = np.array([get_intersection_over_union(detPol.polygon,gtPols[gtNum].polygon) for gtNum in range(len(gtPols))])
+                        if len(overlapList) > 0 and validating_art:
+                            overlapList = np.array(overlapList)
+                            popList = np.where(overlapList > 0.1)[0]
+                            argMax = np.argmax(overlapList)
+                            if gtPols[argMax].art == False:
+                                continue
+                        detPols.append(detPol)
+                        detPolPoints.append(points)
+                        detTrans.append(transcription)
+                    except Exception as E:
+                        # print(points,"\t",resFile)
+                        print(E)
                     ##############################################################
-                detPols.append(detPol)
-                detPolPoints.append(points)
-                
+
+            ######## Clear non art ########
+            if validating_art:
+                gtPols = []
+                gtTrans = []
+                gtPolPoints = []
+                gtCharPoints = []
+                gtCharCounts = []
+                gtDontCarePolsNum = []
+                gtDontCarePolsNum_NED = []
+                evaluationLog = ""
+                pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
+                for n in range(len(pointsList)):
+                    points = pointsList[n]
+                    points = list(map(int,points))
+                    transcription = transcriptionsList[n]
+                    art = True
+                    dontCare = transcription == "###"
+                    if len(transcription) == 0:
+                        continue
+                    if not art:
+                        continue
+                    if evaluationParams['GT_LTRB']:
+                        gtRect = Rectangle(*points)
+                        gtPol = rectangle_to_polygon(gtRect)
+                        points = polygon_to_points(gtPol)
+                    else:
+                        ############## Modify by Tran Thuyen 21/05/2021 ##############
+                        # gtPol = polygon_from_points(points)
+                        gtPol = MY_POLY(points,transcription,art)
+                        ##############################################################
+                    gtPols.append(gtPol)
+                    if dontCare:
+                        gtDontCarePolsNum.append( len(gtPols)-1 )
+                        gtDontCarePolsNum_NED.append( len(gtPols)-1 )
+                        gtPolPoints.append(points)
+                        gtCharPoints.append([])
+                    else:
+                        gtCharSize = len(transcription)
+                        aspect_ratio = gtPol.polygon.aspectRatio()
+                        if aspect_ratio > 1.5:
+                            points_ver =  [points[6], points[7], points[0], points[1], points[2], points[3], points[4], points[5]]
+                            gtPolPoints.append(points_ver)
+                            gtCharPoints.append(gtBoxtoChars(gtCharSize, points_ver))
+                        else:
+                            gtCharPoints.append(gtBoxtoChars(gtCharSize, points))
+                            gtPolPoints.append(points)
+                    gtTrans.append(transcription)
+                    gtArts.append(art)
+                evaluationLog += "GT polygons: " + str(len(gtPols)) + (" (" + str(len(gtDontCarePolsNum)) + " don't care)\n" if len(gtDontCarePolsNum)>0 else "\n")
+
+                # GT Don't Care overlap
+                for DontCare in gtDontCarePolsNum:
+                    for gtNum in list(set(range(len(gtPols))) - set(gtDontCarePolsNum)):
+                        if get_intersection(gtPols[gtNum].polygon, gtPols[DontCare].polygon) > 0:
+                            gtPols[DontCare].polygon -= gtPols[gtNum].polygon                
+            
+            ###############################
+
             evaluationLog += "DET polygons: " + str(len(detPols))
 
             if len(gtPols)>0 and len(detPols)>0:
@@ -482,7 +575,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                 detCorrectUpper += (1 if correctUpper else 0)
                                 if correctUpper:
                                     detMatchedNums.append(detNum)
-                                pairs.append({'gt':[gtNum],'det':[detNum],'correct':correctUpper})
+                                # pairs.append({'gt':[gtNum],'det':[detNum],'type':'','correct':correctUpper})
                                 evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + " trancription correct: " + str(correctUpper) + "\n"
 
                                 #Calculate also 1-NED
@@ -659,8 +752,20 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                             'evaluationLog': evaluationLog
                                         }
             
+            temp_dict = {}
+            if validating_art:
+                # print("Here")
+                for key,val in perSampleMetrics_resfile.items():
+                    # print(key+" "+constraint_name)
+                    temp_dict[key+"_ART_"+constraint_name] = val
+                perSampleMetrics_resfile = {}
+                perSampleMetrics_resfile = temp_dict
+        existART = False
+        if True in artList:
+            existART = True
+        perSampleMetrics_resfile['existART'] = existART
         return recallAccum,precisionAccum,numGtCare,numDetCare,perSampleMetrics_resfile,arrGlobalConfidences,arrGlobalMatches,resFile,\
-                detCorrect,detCorrectUpper,numGtCare,numDetCare,nedSum,nedElements,nedSumUpper,nedElementsUpper
+                detCorrect,detCorrectUpper,numGtCare,numDetCare,nedSum,nedElements,nedSumUpper,nedElementsUpper,existART
 
 
     def calculatestar(args):
@@ -700,14 +805,15 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 methodRecallSum_perfile,methodPrecisionSum_perfile,numGlobalCareGt_perfile,numGlobalCareDet_perfile,\
                 perSampleMetrics_resfile,arrGlobalConfidences_perfile,arrGlobalMatches_perfile,resFile,\
                 detCorrect_perfile,detCorrectUpper_perfile,numGtCare_perfile,numDetCare_perfile, \
-                nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile= results
+                nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile, \
+                existART = results
                 
                 ### Regular tedeval return
                 methodRecallSum += methodRecallSum_perfile
                 methodPrecisionSum += methodPrecisionSum_perfile
                 numGlobalCareGt += numGlobalCareGt_perfile
                 numGlobalCareDet += numGlobalCareDet_perfile
-                perSampleMetrics[resFile] = perSampleMetrics_resfile
+                
                 arrGlobalConfidences.append(arrGlobalConfidences_perfile)
                 arrGlobalMatches.append(arrGlobalMatches_perfile)
 
@@ -716,6 +822,9 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 globalNedElements += nedElements_perfile
                 globalNedSumUpper += nedSumUpper_perfile
                 globalNedElementsUpper += nedElementsUpper_perfile
+                
+                
+                perSampleMetrics[resFile] = perSampleMetrics_resfile
                 pbar.update(1)
     # Compute MAP and MAR
     AP = 0
@@ -732,6 +841,84 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     methodMetrics = {'recall':methodRecall, 'precision':methodPrecision, 'hmean':methodHmean, 'AP':AP, 'ned':methodNed, 'nedUpped':methodNedUpper  }
     
     resDict = {'calculated':True,'Message':'','method': methodMetrics,'per_sample': perSampleMetrics}
+    
+    # # Repeat
+    # from config.config import constraints
+    # for constraint_name,constraint_val in constraints.items():
+    #     # perSampleMetrics = {}
+        
+    #     methodRecallSum = 0
+    #     methodPrecisionSum = 0
+                
+    #     numGlobalCareGt = 0;
+    #     numGlobalCareDet = 0;
+        
+    #     matchedSum = 0
+    #     matchedSumUpper = 0
+    #     globalNedSum = 0
+    #     globalNedElements = 0
+    #     globalNedSumUpper = 0
+    #     globalNedElementsUpper = 0    
+
+    #     arrGlobalConfidences = [];
+    #     arrGlobalMatches = [];
+    #     ### TODO : Optimize using concurrent
+
+    #     evaluationParams['AREA_RECALL_CONSTRAINT'] = constraint_val
+    #     evaluationParams['AREA_PRECISION_CONSTRAINT'] = constraint_val
+        
+    #     ### Assign jobs
+    #     TASKS = [(evalute, (resFile,gt,subm,evaluationParams,True,constraint_name)) for resFile in gt]
+    #     with mp.Pool(processes=PARAMS.NUM_WORKERS) as pool:
+    #         with tqdm(total = len(gt)) as pbar:
+    #             for results in pool.map(calculatestar,TASKS):
+    #                 methodRecallSum_perfile,methodPrecisionSum_perfile,numGlobalCareGt_perfile,numGlobalCareDet_perfile,\
+    #                 perSampleMetrics_resfile,arrGlobalConfidences_perfile,arrGlobalMatches_perfile,resFile,\
+    #                 detCorrect_perfile,detCorrectUpper_perfile,numGtCare_perfile,numDetCare_perfile, \
+    #                 nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile, \
+    #                 existART = results
+                    
+    #                 if existART:
+    #                     ### Regular tedeval return
+    #                     methodRecallSum += methodRecallSum_perfile
+    #                     methodPrecisionSum += methodPrecisionSum_perfile
+    #                     numGlobalCareGt += numGlobalCareGt_perfile
+    #                     numGlobalCareDet += numGlobalCareDet_perfile
+    #                     arrGlobalConfidences.append(arrGlobalConfidences_perfile)
+    #                     arrGlobalMatches.append(arrGlobalMatches_perfile)
+
+    #                     ### NED return
+    #                     globalNedSum += nedSum_perfile
+    #                     globalNedElements += nedElements_perfile
+    #                     globalNedSumUpper += nedSumUpper_perfile
+    #                     globalNedElementsUpper += nedElementsUpper_perfile
+    #                 perSampleMetrics[resFile].update(perSampleMetrics_resfile) ### update exists sample
+    #                 pbar.update(1)
+    #     # Compute MAP and MAR
+        
+    #     AP = 0
+    #     if evaluationParams['CONFIDENCES']:
+    #         AP = compute_ap(arrGlobalConfidences, arrGlobalMatches, numGlobalCareGt)
+
+    #     methodRecall = 0 if numGlobalCareGt == 0 else methodRecallSum/numGlobalCareGt
+    #     methodPrecision = 0 if numGlobalCareDet == 0 else methodPrecisionSum/numGlobalCareDet
+    #     methodHmean = 0 if methodRecall + methodPrecision==0 else 2* methodRecall * methodPrecision / (methodRecall + methodPrecision)
+
+    #     methodNed = 0 if globalNedElements==0 else 1 - float(globalNedSum)/globalNedElements;
+    #     methodNedUpper = 0 if globalNedElementsUpper==0 else 1 - float(globalNedSumUpper)/globalNedElementsUpper;
+        
+    #     methodMetricsART = {'recallART '+constraint_name:methodRecall, 'precisionART '+constraint_name:methodPrecision, 'hmeanART '+constraint_name:methodHmean, 
+    #                         'APART '+constraint_name:AP, 'nedART '+constraint_name:methodNed, 'nedUppedART '+constraint_name:methodNedUpper  }
+    #     # methodMetricsART = {'recallART':methodRecall, 'nedART':methodNed, 'nedUppedART':methodNedUpper  }
+        
+    #     # resDict = {'calculated':True,'Message':'','methodART': methodMetrics,'per_sampleART': perSampleMetrics}    
+    #     resDict['method'].update(methodMetricsART)
+    #     import json
+    #     # with open("test_{}_.json".format(constraint_name),'w') as f:
+    #     #     json.dump(perSampleMetrics,f,indent=4)
+    #     resDict['per_sample'].update(perSampleMetrics)
+    #     # resDict['per_sampleART'] = perSampleMetrics
+    
     # import json
     # print("Here")
     # with open('temp.json','w') as f:

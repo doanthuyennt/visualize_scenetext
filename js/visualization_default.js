@@ -34,7 +34,7 @@ var ClassVisualization = function(){
     this.load_sample_info = function(){
         //web.pantalla_espera();
         
-        var urlInfo = "../sampleInfo/?m=" + getUrlParameter("m");
+        var urlInfo = "../sampleInfo/?m=" + getUrlParameter("m") + "&art=" + getUrlParameter("art") ;
         var extraParmasNames = ["file","eval","sample","gtv"];
         for(var i=0;i<extraParmasNames.length;i++){
             var parameterValue = getUrlParameter( extraParmasNames[i] );
@@ -87,6 +87,9 @@ var ClassVisualization = function(){
         this.scale = Math.min($("#canvas_gt").width()/this.im_w,$("#canvas_gt").height()/this.im_h );
         setTimeout(function(){self.adapt_controls();},500);
 
+        this.ctx_reg = canvas_det.getContext("2d");
+        this.ctx_reg.mozImageSmoothingEnabled = false;
+        this.ctx_reg.webkitImageSmoothingEnabled = false; 
     };
     this.adapt_controls = function(){
         if(!this.image_details_loaded){
@@ -293,12 +296,19 @@ var ClassVisualization = function(){
                  BL = pointsList[3];
                  BR = pointsList[2];
              }
-         }else{
-             TL = {"x" : bb[0] , "y":bb[3]};
-             TR = {"x" : bb[2] , "y":bb[3]};
-             BL = {"x" : bb[0] , "y":bb[1]};
-             BR = {"x" : bb[2] , "y":bb[1]};
-         }
+         }else if (bb.length == 4){
+            TL = {"x" : bb[0] , "y":bb[3]};
+            TR = {"x" : bb[2] , "y":bb[3]};
+            BL = {"x" : bb[0] , "y":bb[1]};
+            BR = {"x" : bb[2] , "y":bb[1]};
+        } else {
+           // bb has 2*N points. we want to find TL, TR, BL, BR point to cover polygon
+           var num_points = Math.round(bb.length/2);
+           BL = {"x" : bb[0] , "y":bb[1]};
+           BR = {"x" : bb[num_points-2] , "y":bb[num_points-1]};
+           TR = {"x" : bb[num_points] , "y":bb[num_points+1]};
+           TL = {"x" : bb[2*num_points-2] , "y":bb[2*num_points-1]};
+        }
         var height = Math.round(this.original_to_zoom_val_y(parseInt( Math.min(TL.y,TR.y) )+1) - this.original_to_zoom_val_y(parseInt(Math.max(BL.y,BR.y)))) - 3;
         var width = Math.round(this.original_to_zoom_val(parseInt( Math.min(TR.x,BR.x) )+1) - this.original_to_zoom_val(parseInt(Math.max(TL.x,BL.x)))) - 3;
 

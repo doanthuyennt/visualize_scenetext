@@ -59,6 +59,15 @@
         tr {
             cursor:pointer
         }
+
+        th clickable-row { 
+        display: block; 
+        border: 1px solid black;
+        padding: 16px; 
+        }
+        th {
+            cursor:pointer
+        }
         </style>
 </head>
 
@@ -81,18 +90,26 @@
         <a href="../method/?m={{submitId}}&p={{page}}" style='margin-right: 40px;'>{{methodTitle}}</a>
 
         {% if (vars['sample'] | int) >1 %}
-        <a class="pure-button button-secondary" href="?m={{submitId}}&sample={{vars['sample']|int-1}}">
+        <a id="prevButton" class="pure-button button-secondary" href="?m={{submitId}}&sample={{vars['sample']|int-1}}&art={{vars['art']}}">
             < previous
         </a>
         {% endif %}
         Sample {{vars['sample']}} of {{vars["num_samples"]}}
         {% if (vars['sample'] | int) < (vars["num_samples"] | int) %} 
-        <a class="pure-button button-secondary" href="?m={{submitId}}&sample={{vars['sample']|int+1}}">
+        <a id="nextButton" class="pure-button button-secondary" href="?m={{submitId}}&sample={{vars['sample']|int+1}}&art={{vars['art']}}">
             next >
         </a>
         {% endif %}
-
-        
+        {#
+        <!-- <a class="pure-button button-secondary" href="?m={{submitId}}&sample={{vars['sample']|int}}&art=">
+            Normal {{v}}
+        </a>
+        {% for k,v in vars["artList"].items() %}
+            <a class="pure-button button-secondary" href="?m={{submitId}}&sample={{vars['sample']|int}}&art={{k}}">
+                Art {{v}}
+            </a>
+        {% endfor %} -->
+        #}
     </div>
 
     <div id='div_comparation'>
@@ -107,7 +124,7 @@
                 {%set num_column_order = num_column %}
                 {%set sort_order=v['order'] %}
                 {% endif %}
-                <th>{{v['long_name']}}</th>
+                <th class='clickable-row' data-href='../sample/?m={{submitId}}&sample={{vars["sample"]}}&art={{v["art"]}}'>{{v['long_name']}}</th>
                 {% endfor %}
             </thead>
             <tbody>
@@ -140,7 +157,7 @@
                     {% else %}
                         {%set value=colValue %}
                     {% endif %}
-                    <td class='clickable-row' data-href='../sample/?m={{row[0]}}&sample={{vars["sample"]}}'>{{value}}</td>
+                        <td class='clickable-row' data-href='../sample/?m={{row[0]}}&sample={{vars["sample"]}}&art={{v["art"]}}'>{{value}}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
