@@ -60,10 +60,10 @@ var ClassVisualization = function(){
 
         this.canvas_det.setAttribute("id","canvas_det");
 
-        this.canvas_gt.width=$("#div_canvas_gt").width();
-        this.canvas_gt.height=$("#div_canvas_gt").height();
-        this.canvas_det.width=$("#div_canvas_gt").width();
-        this.canvas_det.height=$("#div_canvas_gt").height();
+        this.canvas_gt.width=$("#div_canvas_det").width();
+        this.canvas_gt.height=$("#div_canvas_det").height();
+        this.canvas_det.width=$("#div_canvas_det").width();
+        this.canvas_det.height=$("#div_canvas_det").height();
 
         var self = this;
         
@@ -71,12 +71,18 @@ var ClassVisualization = function(){
         $("#canvas_gt").mousemove(function(e) {self.mousemove(e);});
         $("#canvas_gt").mouseup(function(e) {self.mouseup(e);});
         $("#canvas_gt").mouseleave(function(e) {self.mouseleave(e);});
-        $("#canvas_gt").mousewheel(function(e, d) {self.mousewheel(e,d);});
+        // $("#canvas_gt").mousewheel(function(e, d) {self.mousewheel(e,d);});
+        this.canvas_gt.addEventListener("mousewheel",function(e,d) {
+            self.mousewheel(e,d);
+        })
         $("#canvas_det").mousedown(function(e) {self.mousedown(e);});
         $("#canvas_det").mousemove(function(e) {self.mousemove(e);});
         $("#canvas_det").mouseup(function(e) {self.mouseup(e);});
         $("#canvas_det").mouseleave(function(e) {self.mouseleave(e);});
-        $("#canvas_det").mousewheel(function(e, d) {self.mousewheel(e,d);});
+        // $("#canvas_det").mousewheel(function(e, d) {self.mousewheel(e,d);});
+        this.canvas_det.addEventListener("mousewheel",function(e,d) {
+            self.mousewheel(e,d);
+        })
 
         this.ctx_gt = canvas_gt.getContext("2d");
         this.ctx_det = canvas_det.getContext("2d");
@@ -99,10 +105,10 @@ var ClassVisualization = function(){
         $("#div_container_gt").css("height",height + "px");
         $("#div_container_det").css("height",height + "px");
 
-        this.canvas_gt.width=$("#div_canvas_gt").width();
-        this.canvas_gt.height=$("#div_canvas_gt").height();
-        this.canvas_det.width=$("#div_canvas_gt").width();
-        this.canvas_det.height=$("#div_canvas_gt").height();
+        this.canvas_gt.width=$("#div_canvas_det").width();
+        this.canvas_gt.height=$("#div_canvas_det").height();
+        this.canvas_det.width=$("#div_canvas_det").width();
+        this.canvas_det.height=$("#div_canvas_det").height();
         this.ctx_gt.mozImageSmoothingEnabled = false;
         this.ctx_gt.webkitImageSmoothingEnabled = false;
         this.ctx_det.mozImageSmoothingEnabled = false;
@@ -113,6 +119,7 @@ var ClassVisualization = function(){
         this.zoom_changed();
         this.correct_image_offset();
         this.draw();
+        this.drawRec(this.sampleData.detPolPoints,this.sampleData.detTrans);
     };
     
     this.mousemove = function(e){
@@ -138,8 +145,13 @@ var ClassVisualization = function(){
         this.mouse_clicked = false;
     };
     this.mousewheel = function(e,d){        
-         var new_scale = this.scale + ((d>0)? this.scale*0.1 : -this.scale*0.1);
+        try{
+            d = -e.deltaY
+        }
+        catch{
 
+        }
+        var new_scale = this.scale + ((d>0)? this.scale*0.1 : -this.scale*0.1);
         var point = this.mm_point;
         var real_point = this.zoom_to_original(point);
 
@@ -353,6 +365,10 @@ ClassVisualization.prototype.load_visualization = function(){
 };
 
 ClassVisualization.prototype.draw = function(){
+    
+};
+
+ClassVisualization.prototype.drawRec = function(){
     
 };
 

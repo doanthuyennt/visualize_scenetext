@@ -174,5 +174,34 @@
         window.location = $(this).data("href");
     });
 });
+    document.addEventListener('keydown', (event) => {
+            const keyName = event.key;
+        
+            if (keyName === 'Control') {
+            // do not alert when only Control key is pressed.
+            return;
+            }
+            if (keyName == "ArrowLeft") {
+                var sample = Number("{{vars['sample']}}");
+                if (  sample > 1) {
+                var prevUrl = "../sample/?m={{submitId}}&sample={{vars['sample']|int-1}}&art={{vars['art']}}";
+                window.location.replace(prevUrl);
+                }
+                else {
+                    window.alert("Bạn đang xem ảnh đầu của bộ dữ liệu!");
+                }
+            }
+            if (keyName == "ArrowRight") {
+                var sample = Number("{{vars['sample']}}");
+                var max_sample = Number("{{vars['num_samples']}}");
+                if (sample < max_sample) {
+                    var nextUrl = "?m={{submitId}}&sample={{vars['sample']|int+1}}&art={{vars['art']}}";
+                    window.location.replace(nextUrl);
+                }
+                else {
+                    window.alert("Bạn đang xem ảnh cuối của bộ dữ liệu!");
+                }
+            }
+        }, false);
 </script>
 </html>

@@ -14,10 +14,10 @@
 }
 
 div.container_canvas{
-    width: 33%;
+    width: 50%;
     vertical-align: top;
     position: relative;
-    height: 400px;
+    height: 600px;
     display: inline-block;  
     border: 1px solid #999;
     box-sizing: border-box;
@@ -31,10 +31,10 @@ div.container_canvas h3, #div_sample_info h3{
 }
 
 div.container_canvas_rec{
-    width: 33%;
+    width: 50%;
     vertical-align: top;
     position: relative;
-    height: 400px;
+    height: 600px;
     display: inline-block;  
     border: 1px solid #999;
     box-sizing: border-box;

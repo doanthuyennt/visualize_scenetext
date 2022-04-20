@@ -88,14 +88,17 @@ $(document).ready( function(){
        url : './evaluate' ,
        dataType: 'json',
        success : function(result){
+           console.log(result);
            close_overlay();
-           if (result.calculated){
-               document.location.href = "./method/?m=" + result.id;
-           }else{
-               show_error(result.Message);
-           }
+        //    if (result.resDict.calculated){
+            document.location.href = "./method/?m=" + result.id;
+        //    }else{
+        //        show_error(result.Message);
+        //    }
        },
-       error : function(){
+       error : function(request, exception, error){
+           console.log(request.responseText);
+           console.log(exception);
            close_overlay();
            show_error("Error on server");
        }

@@ -1,0 +1,13 @@
+numpy
+opencv-python
+flask
+flask_restful
+flask_cors
+flask_apscheduler
+Polygon3
+Pillow
+shapely
+termcolor
+tqdm
+multiprocess
+editdistance

@@ -93,9 +93,12 @@
         {% endfor %}
         <button class="pure-button pure-button-primary" type="button" onclick="upload_subm()">Evaluate</button>
     </form>
-    <p class='info'>Dataset files of this Standalone: <a href='./gt/Vin_images.zip'>Images</a> - <a
-            href='./gt/gt_vin.{{vars["extension"]}}'>Ground Truth</a> <button
-            class="ml20 pure-button pure-button-secondary" type="button" onclick="instructions()">See upload
+    <p class='info'>Submit sample here: 
+        <!-- <a href='./gt/images.zip'>Images</a> -  -->
+        <!-- <a href='./gt/gt_full.{{vars["extension"]}}'>Ground Truth</a>  -->
+        <a href='./gt/visualize_sample.zip'>Submit sample</a> 
+
+        <button class="ml20 pure-button pure-button-secondary" type="button" onclick="instructions()">See upload
             instructions..</button></p>
     {% if vars['subm_data'].__len__() >0 %}
     {% set graphicRows = [] %}
@@ -103,7 +106,7 @@
 
     <table class='results ib'>
         <thead>
-            <th>Method</th>
+            <th width="45%">Method</th>
             <th>Submit date</th>
             {% set row = ["'Title'"] %}
             {% set row2 = ["'Title'"] %}

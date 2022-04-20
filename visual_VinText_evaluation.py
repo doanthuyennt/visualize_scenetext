@@ -48,10 +48,6 @@ sumbData = cursor.fetchall()
 conn.close()
 
 def image_name_to_id(name):
-    # m = re.match(image_name_to_id_str,name)
-    # if m == None:
-    #     return False
-    # id = m.group(1)
     id = name.replace('.jpg', '').replace('.png', '').replace('.gif', '').replace('.bmp', '').replace('.json', '').replace('.jpeg', '')
     if id+'.json' not in gTArchive.namelist():
         return False
@@ -136,8 +132,8 @@ def delete_method():
 
 @app.route('/edit_method', methods=['POST'])
 def edit_method():
-    id = request.forms.get('id')
-    name = request.forms.get('name')
+    id = request.form['id']
+    name = request.form['name']
     
     dbPath = os.path.join(".","output","submits")
     conn = sqlite3.connect(dbPath)
@@ -288,26 +284,16 @@ def evaluate():
     id=0
     submFile = request.files.get('submissionFile')
     if submFile is None:
-        resDict = {"calculated":False,"Message":"No file selected"}
-        if request.args['json']=="1":
-            return json.dumps(resDict,indent=4)
-        else:        
-            vars = {
-                # 'url':url, 
-            'title':'Method Upload ' + title,'resDict':resDict}
-            return render_template('upload.html',vars=vars)    
+        resDict = {"calculated":False,"Message":"No file selected"}      
+        vars = {'title':'Method Upload ' + title,'resDict':resDict}
+        return render_template('upload.html',vars=vars)    
     else:
         
         name, ext = os.path.splitext(submFile.filename)
         if ext not in ('.' + gt_ext):
             resDict = {"calculated":False,"Message":"File not valid. A " + gt_ext.upper() + " file is required."}
-            if request.args['json']=="1":
-                return json.dumps(resDict,indent=4)            
-            else:
-                vars = {
-                    # 'url':url, 
-                    'title':'Method Upload ' + title,'resDict':resDict}
-                return render_template('upload.html',vars=vars)    
+            vars = {'title':'Method Upload ' + title,'resDict':resDict}
+            return render_template('upload.html',vars=vars)    
     
         p = {
             'g': os.path.join(".","gt","gt." + gt_ext), 
@@ -371,10 +357,8 @@ def evaluate():
         # if request.args['json']=="1":
         #     return json.dumps( {"calculated": resDict['calculated'],"Message": resDict['Message'],'id':id},indent=4 )
         # else:
-        vars = {
-            # 'url':url, 
-        'title':'Method Upload ' + title,'resDict':resDict,'id':id}
-        return render_template('upload.html',vars=vars)    
+        vars = {'title':'Method Upload ' + title,'resDict':resDict,'id':id}
+        return jsonify(vars)    
 
 @app.route('/image_thumb/', methods=['GET'])
 def image_thumb():

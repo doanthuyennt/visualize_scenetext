@@ -297,6 +297,9 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         
         gtPols = []
         detPols = []
+
+        detConfs = []
+        recConfs = []
         gtTrans = []
         detTrans = []        
         gtPolPoints = []
@@ -341,7 +344,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         evaluationLog = ""
         # get_tl_line_values_from_file_contents(content,CRLF=True,LTRB=True,withTranscription=False,withConfidence=False,imWidth=0,imHeight=0,sort_by_confidences=True):
         # pointsList,_,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
-        pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
+        pointsList,det_confidencesList,ret_confidencesList,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
         for n in range(len(pointsList)):
             points = pointsList[n]
             points = list(map(int,points))
@@ -389,7 +392,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             
             detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
 
-            pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
+            pointsList,det_confidencesList,ret_confidencesList,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
             # pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
             for n in range(len(pointsList)):
                 try:
@@ -437,6 +440,8 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         detPols.append(detPol)
                         detPolPoints.append(points)
                         detTrans.append(transcription)
+                        detConfs.append(det_confidencesList[n])
+                        recConfs.append(ret_confidencesList[n])
                     except Exception as E:
                         # print(points,"\t",resFile)
                         print(E)
@@ -452,7 +457,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 gtDontCarePolsNum = []
                 gtDontCarePolsNum_NED = []
                 evaluationLog = ""
-                pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
+                pointsList,confidencesList,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
                 for n in range(len(pointsList)):
                     points = pointsList[n]
                     points = list(map(int,points))
@@ -749,7 +754,9 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                             'gtDontCare':gtDontCarePolsNum,
                                             'detDontCare':detDontCarePolsNum,
                                             'evaluationParams': evaluationParams,
-                                            'evaluationLog': evaluationLog
+                                            'evaluationLog': evaluationLog,
+                                            'detConfidence': detConfs,
+                                            'recConfidence': recConfs
                                         }
             
             temp_dict = {}

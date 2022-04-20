@@ -358,7 +358,9 @@ def get_tl_line_values_from_dict(content,CRLF=True,withScript=False,withTranscri
     """
     pointsList = []
     transcriptionsList = []
-    confidencesList = []
+    det_confidencesList = []
+    ret_confidencesList = []
+
     artList = []
     
     lines = json.loads(content)
@@ -366,20 +368,25 @@ def get_tl_line_values_from_dict(content,CRLF=True,withScript=False,withTranscri
         # points, confidence, script, transcription = get_tl_line_values(line,withScript,withTranscription,withConfidence);
         points = line['points']
         points = list(itertools.chain(*points)) ## Flatten a 2d list [[a,b],[c,d],[e,f],[g,h]]
-        if 'confidence' in line.keys():
-            confidence = line['confidence']
-            confidencesList.append(confidence)
+        if 'det_confidence' in line.keys():
+            confidence = line['det_confidence']
+            det_confidencesList.append(confidence)
         else:
-            confidencesList.append(1)
+            det_confidencesList.append(1.0)
         if 'transcription' in line.keys():
             transcription = line['transcription']
             transcriptionsList.append(transcription)
         if 'art' in line.keys():
             art = line['art']
             artList.append(art)
+        if 'rec_confidence' in line.keys():
+            confidence = line['rec_confidence']
+            ret_confidencesList.append(confidence)   
+        else:
+            ret_confidencesList.append(1.0)   
         pointsList.append(points)
 
-    return pointsList,confidencesList,transcriptionsList,artList
+    return pointsList,det_confidencesList,ret_confidencesList,transcriptionsList,artList
 
 def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_method_fn,save_name,show_result=True,per_sample=True):
     """

@@ -9,11 +9,11 @@ ClassVisualization.prototype.load_visualization = function(){
     var urlImg = "../image/?ch=" + getUrlParameter("ch") + "&task=" + getUrlParameter("task") + "&sample=" + getUrlParameter("sample") +  "&gtv=" + getUrlParameter("gtv");
 
     var template = "<div class='im_filters'><input type='checkbox' checked='checked' id='chk_image'><label for='chk_image'>Show Image</label></div>"+
-                    "<div class='container_canvas'>" +
+                    "<div class='container_canvas' id='cont_div_canvas_gt'>" +
                     "<h3>Ground Truth</h3>" +
                     "<div id='div_canvas_gt'></div>" +
                    "</div>"+
-                   "<div class='container_canvas'>" +
+                   "<div class='container_canvas' id='cont_div_canvas_det'>" +
                     "<h3>Detection</h3>" +
                     "<div id='div_canvas_det'></div>" +
                    "</div>"+
@@ -36,7 +36,10 @@ ClassVisualization.prototype.load_visualization = function(){
     }   
     this.image_loaded = false;
     this.draw();
-    
+
+    document.getElementById("div_sample_info").style.display = 'none';
+    document.getElementById("div_logs").style.display = 'none';
+    // document.getElementById("div_comparation").style.display = 'none';
     $("#chk_image").change(function(){
         self.draw();
     });
@@ -45,12 +48,18 @@ ClassVisualization.prototype.load_visualization = function(){
         self.image_loaded = true;
         self.im_w = this.width;
         self.im_h = this.height;
-        self.scale = Math.min($("#div_canvas_gt").width()/self.im_w,$("#div_canvas_det").height()/self.im_h );
+        if ($("#div_canvas_gt").height() != 0){
+            self.scale = Math.min($("#div_canvas_gt").width()/self.im_w,$("#div_canvas_det").height()/self.im_h );
+        }
+        else{
+            self.scale = Math.min($("#div_canvas_det").width()/self.im_w,$("#div_canvas_det").height()/self.im_h );
+        }
         self.zoom_changed();
         self.correct_image_offset();
         self.draw();
     });
-
+    document.getElementById("cont_div_canvas_gt").style.display = 'none';
+    // document.getElementById("div_canvas_gt").style.display = 'none';
     var numGt = sampleData.gtPolPoints==undefined? 0 : sampleData.gtPolPoints.length;
     var numDet = sampleData.detPolPoints==undefined? 0 : sampleData.detPolPoints.length;
 
@@ -277,9 +286,9 @@ ClassVisualization.prototype.draw = function(){
         this.ctx_det.fillStyle = "rgba(255,0,0,1)";
         this.ctx_det.font= "12px Verdana";
         this.ctx_det.fillText("Loading image..", 20,60);
-        this.ctx_gt.fillStyle = "rgba(255,0,0,1)";
-        this.ctx_gt.font= "12px Verdana";
-        this.ctx_gt.fillText("Loading image..", 20,60);
+        // this.ctx_gt.fillStyle = "rgba(255,0,0,1)";
+        // this.ctx_gt.font= "12px Verdana";
+        // this.ctx_gt.fillText("Loading image..", 20,60);
 
         this.ctx_reg.fillStyle = "rgba(255,0,0,1)";
         this.ctx_reg.font= "12px Verdana";
@@ -299,9 +308,9 @@ ClassVisualization.prototype.draw = function(){
 
 
     if (this.sampleData==null){
-        this.ctx_gt.fillStyle = "rgba(255,0,0,1)";
-        this.ctx_gt.font= "12px Verdana";
-        this.ctx_gt.fillText("Loading method..", 20,60);        
+        // this.ctx_gt.fillStyle = "rgba(255,0,0,1)";
+        // this.ctx_gt.font= "12px Verdana";
+        // this.ctx_gt.fillText("Loading method..", 20,60);        
         this.ctx_det.fillStyle = "rgba(255,0,0,1)";
         this.ctx_det.font= "12px Verdana";
         this.ctx_det.fillText("Loading method..", 20,60);
@@ -514,45 +523,6 @@ ClassVisualization.prototype.draw = function(){
                 TL = {"x" : bb[2*num_points-2] , "y":bb[2*num_points-1]};
             }
             
-            if (document.getElementById('rec_canvas_'+i) == undefined){
-                var xcoors = [];
-                var ycoors = [];
-                for (var j=0;j<bb.length - 1;j+=2){
-                    xcoors.push(bb[j]);
-                    ycoors.push(bb[j+1]);
-                }
-                var xmax_coor = Math.max(...xcoors);
-                var ymax_coor = Math.max(...ycoors);
-                var xmin_coor = Math.min(...xcoors);
-                var ymin_coor = Math.min(...ycoors);
-                let rec_canvas = document.createElement('canvas');
-                // let sx = Math.min(
-                //     TR.x,TL.x,BR.x,BL.x
-                // )
-                // let sy = Math.min(
-                //     TR.y,TL.y,BR.y,BL.y
-                // )
-                // let width = Math.max(
-                //     Math.abs(TR.x-TL.x),
-                //     Math.abs(BR.x-BL.x)
-                // )
-                // let height = Math.max(
-                //     Math.abs(TR.y-BR.y),
-                //     Math.abs(TL.y-BL.y)
-                // )
-                let sx = xmin_coor;
-                let sy = ymin_coor;
-                let width = Math.abs(xmax_coor - xmin_coor);
-                let height = Math.abs(ymax_coor - ymin_coor);
-                let coors = [sx,sy,width,height];
-                rec_canvas.setAttribute("id","rec_canvas_"+i);
-                document.getElementById("div_canvas_reg").appendChild(rec_canvas);
-                drawRec(
-                    [],"rec_canvas_"+i,coors,this.sampleData.detTrans[i]
-                )
-            }
-            else {
-            }
             }
             if( !$("#chk_image").is(":checked")){
                 this.writeText(this.ctx_det,bb,this.sampleData.detTrans[i]);
@@ -561,7 +531,47 @@ ClassVisualization.prototype.draw = function(){
     this.draws++;
 };
 
-function drawRec(idata,id,coors,text) {
+ClassVisualization.prototype.drawRec = function(Points,Trans){
+    for (var i=0;i<Points.length;i++){
+        if (document.getElementById('rec_canvas_'+i) == undefined){
+            var bb = Points[i];
+            var xcoors = [];
+            var ycoors = [];
+            for (var j=0;j<bb.length - 1;j+=2){
+                xcoors.push(bb[j]);
+                ycoors.push(bb[j+1]);
+            }
+            var xmax_coor = Math.max(...xcoors);
+            var ymax_coor = Math.max(...ycoors);
+            var xmin_coor = Math.min(...xcoors);
+            var ymin_coor = Math.min(...ycoors);
+            let rec_canvas = document.createElement('canvas');
+            let sx = xmin_coor;
+            let sy = ymin_coor;
+            let width = Math.abs(xmax_coor - xmin_coor);
+            let height = Math.abs(ymax_coor - ymin_coor);
+            let coors = [sx,sy,width,height];
+            rec_canvas.setAttribute("id","rec_canvas_"+i);
+            document.getElementById("div_canvas_reg").appendChild(rec_canvas);
+            if (this.sampleData["detConfidence"]){
+                var det_conf = this.sampleData.detConfidence[i];
+            }
+            else{
+                var det_conf = "";
+            }
+
+            if (this.sampleData["recConfidence"]){
+                var rec_conf = this.sampleData.recConfidence[i];
+            }
+            else{
+                var rec_conf = "";
+            }
+            drawRec("rec_canvas_"+i,coors,Trans[i],det_conf,rec_conf)
+        }
+    }
+};
+
+function drawRec(id,coors,text,det_conf,rec_conf) {
     const img = new Image();
     let sx, sy, sWidth, sHeight;
     [sx, sy, sWidth, sHeight] = coors;
@@ -569,10 +579,24 @@ function drawRec(idata,id,coors,text) {
     const ctx = canvas.getContext('2d');
     img.onload = () => {
         // ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-        ctx.canvas.width  = 400;
+        if (det_conf != "" && det_conf != ""){
+            det_conf = det_conf.toFixed(2);
+            rec_conf = rec_conf.toFixed(2);
+            text = `Trans: ${text} \t Det Conf: ${det_conf} \t Rec Conf: ${rec_conf}`
+        }
+        else if (det_conf != ""){
+            det_conf = det_conf.toFixed(2);
+            text = `Trans: ${text} \t Det Conf: ${det_conf}`
+        }
+        else if (rec_conf != ""){
+            rec_conf = rec_conf.toFixed(2);
+            text = `Trans: ${text} \t Det Conf: ${rec_conf}`
+        }
+
+        ctx.canvas.width  = 700;
         ctx.canvas.height = 50;
-        ctx.drawImage(img, sx, sy, sWidth, sHeight, 70, 0, 120, 50);
-        var fontSize = 20;
+        ctx.drawImage(img, sx, sy, sWidth, sHeight, 20, 0, 120, 50);
+        var fontSize = 18;
 
         // console.log(coors,text);
         ctx.fillStyle = "rgba(255,0,0,1)";
@@ -583,7 +607,7 @@ function drawRec(idata,id,coors,text) {
     
         metrics = ctx.measureText(text);
         textWidth = metrics.width;
-        ctx.fillText(text, 200 , 40);
+        ctx.fillText(text, 150 , 40);
     };
     img.src = document.getElementById('img_gt_image2').src;
 
