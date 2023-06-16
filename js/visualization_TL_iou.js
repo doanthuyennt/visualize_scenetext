@@ -18,8 +18,13 @@ ClassVisualization.prototype.load_visualization = function(){
                     "<div id='div_canvas_det'></div>" +
                    "</div>"+
                    "<div class='container_canvas_rec'>" +
+<<<<<<< HEAD
                    "<h3 >Recognition</h3>" +
                     "<div class='div_sample_info_rec' id='div_canvas_reg'></div>" +
+=======
+                    "<h3>Recognition</h3>" +
+                    "<div id='div_canvas_reg'></div>" +
+>>>>>>> 83a48414362e5e1cd9da25c2cb26a165f9410be6
                    "</div>"+
                    "<img id='img_gt_image2'>"+
                    "<div id='div_sample_info'>"+
@@ -513,6 +518,10 @@ ClassVisualization.prototype.draw = function(){
                 TR = {"x" : bb[num_points] , "y":bb[num_points+1]};
                 TL = {"x" : bb[2*num_points-2] , "y":bb[2*num_points-1]};
             }
+<<<<<<< HEAD
+=======
+            
+>>>>>>> 83a48414362e5e1cd9da25c2cb26a165f9410be6
             if (document.getElementById('rec_canvas_'+i) == undefined){
                 var xcoors = [];
                 var ycoors = [];
@@ -524,8 +533,11 @@ ClassVisualization.prototype.draw = function(){
                 var ymax_coor = Math.max(...ycoors);
                 var xmin_coor = Math.min(...xcoors);
                 var ymin_coor = Math.min(...ycoors);
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 83a48414362e5e1cd9da25c2cb26a165f9410be6
                 let rec_canvas = document.createElement('canvas');
                 // let sx = Math.min(
                 //     TR.x,TL.x,BR.x,BL.x
@@ -549,7 +561,11 @@ ClassVisualization.prototype.draw = function(){
                 rec_canvas.setAttribute("id","rec_canvas_"+i);
                 document.getElementById("div_canvas_reg").appendChild(rec_canvas);
                 drawRec(
+<<<<<<< HEAD
                     "rec_canvas_"+i,coors,this.sampleData.detTrans[i]
+=======
+                    [],"rec_canvas_"+i,coors,this.sampleData.detTrans[i]
+>>>>>>> 83a48414362e5e1cd9da25c2cb26a165f9410be6
                 )
             }
             else {
@@ -562,7 +578,11 @@ ClassVisualization.prototype.draw = function(){
     this.draws++;
 };
 
+<<<<<<< HEAD
 function drawRec(id,coors,text) {
+=======
+function drawRec(idata,id,coors,text) {
+>>>>>>> 83a48414362e5e1cd9da25c2cb26a165f9410be6
     const img = new Image();
     let sx, sy, sWidth, sHeight;
     [sx, sy, sWidth, sHeight] = coors;
@@ -588,9 +608,12 @@ function drawRec(id,coors,text) {
     };
     img.src = document.getElementById('img_gt_image2').src;
 
+<<<<<<< HEAD
     // var height = Math.round(this.original_to_zoom_val_y(parseInt( Math.min(TL.y,TR.y) )+1) - this.original_to_zoom_val_y(parseInt(Math.max(BL.y,BR.y)))) - 3;
     // var width = Math.round(this.original_to_zoom_val(parseInt( Math.min(TR.x,BR.x) )+1) - this.original_to_zoom_val(parseInt(Math.max(TL.x,BL.x)))) - 3;
 
 
 
+=======
+>>>>>>> 83a48414362e5e1cd9da25c2cb26a165f9410be6
 }

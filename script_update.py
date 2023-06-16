@@ -869,6 +869,84 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     methodMetrics = {'recall':methodRecall, 'precision':methodPrecision, 'hmean':methodHmean, 'AP':AP, 'ned':methodNed, 'nedUpped':methodNedUpper  }
     
     resDict = {'calculated':True,'Message':'','method': methodMetrics,'per_sample': perSampleMetrics}
+    
+    # # Repeat
+    # from config.config import constraints
+    # for constraint_name,constraint_val in constraints.items():
+    #     # perSampleMetrics = {}
+        
+    #     methodRecallSum = 0
+    #     methodPrecisionSum = 0
+                
+    #     numGlobalCareGt = 0;
+    #     numGlobalCareDet = 0;
+        
+    #     matchedSum = 0
+    #     matchedSumUpper = 0
+    #     globalNedSum = 0
+    #     globalNedElements = 0
+    #     globalNedSumUpper = 0
+    #     globalNedElementsUpper = 0    
+
+    #     arrGlobalConfidences = [];
+    #     arrGlobalMatches = [];
+    #     ### TODO : Optimize using concurrent
+
+    #     evaluationParams['AREA_RECALL_CONSTRAINT'] = constraint_val
+    #     evaluationParams['AREA_PRECISION_CONSTRAINT'] = constraint_val
+        
+    #     ### Assign jobs
+    #     TASKS = [(evalute, (resFile,gt,subm,evaluationParams,True,constraint_name)) for resFile in gt]
+    #     with mp.Pool(processes=PARAMS.NUM_WORKERS) as pool:
+    #         with tqdm(total = len(gt)) as pbar:
+    #             for results in pool.map(calculatestar,TASKS):
+    #                 methodRecallSum_perfile,methodPrecisionSum_perfile,numGlobalCareGt_perfile,numGlobalCareDet_perfile,\
+    #                 perSampleMetrics_resfile,arrGlobalConfidences_perfile,arrGlobalMatches_perfile,resFile,\
+    #                 detCorrect_perfile,detCorrectUpper_perfile,numGtCare_perfile,numDetCare_perfile, \
+    #                 nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile, \
+    #                 existART = results
+                    
+    #                 if existART:
+    #                     ### Regular tedeval return
+    #                     methodRecallSum += methodRecallSum_perfile
+    #                     methodPrecisionSum += methodPrecisionSum_perfile
+    #                     numGlobalCareGt += numGlobalCareGt_perfile
+    #                     numGlobalCareDet += numGlobalCareDet_perfile
+    #                     arrGlobalConfidences.append(arrGlobalConfidences_perfile)
+    #                     arrGlobalMatches.append(arrGlobalMatches_perfile)
+
+    #                     ### NED return
+    #                     globalNedSum += nedSum_perfile
+    #                     globalNedElements += nedElements_perfile
+    #                     globalNedSumUpper += nedSumUpper_perfile
+    #                     globalNedElementsUpper += nedElementsUpper_perfile
+    #                 perSampleMetrics[resFile].update(perSampleMetrics_resfile) ### update exists sample
+    #                 pbar.update(1)
+    #     # Compute MAP and MAR
+        
+    #     AP = 0
+    #     if evaluationParams['CONFIDENCES']:
+    #         AP = compute_ap(arrGlobalConfidences, arrGlobalMatches, numGlobalCareGt)
+
+    #     methodRecall = 0 if numGlobalCareGt == 0 else methodRecallSum/numGlobalCareGt
+    #     methodPrecision = 0 if numGlobalCareDet == 0 else methodPrecisionSum/numGlobalCareDet
+    #     methodHmean = 0 if methodRecall + methodPrecision==0 else 2* methodRecall * methodPrecision / (methodRecall + methodPrecision)
+
+    #     methodNed = 0 if globalNedElements==0 else 1 - float(globalNedSum)/globalNedElements;
+    #     methodNedUpper = 0 if globalNedElementsUpper==0 else 1 - float(globalNedSumUpper)/globalNedElementsUpper;
+        
+    #     methodMetricsART = {'recallART '+constraint_name:methodRecall, 'precisionART '+constraint_name:methodPrecision, 'hmeanART '+constraint_name:methodHmean, 
+    #                         'APART '+constraint_name:AP, 'nedART '+constraint_name:methodNed, 'nedUppedART '+constraint_name:methodNedUpper  }
+    #     # methodMetricsART = {'recallART':methodRecall, 'nedART':methodNed, 'nedUppedART':methodNedUpper  }
+        
+    #     # resDict = {'calculated':True,'Message':'','methodART': methodMetrics,'per_sampleART': perSampleMetrics}    
+    #     resDict['method'].update(methodMetricsART)
+    #     import json
+    #     # with open("test_{}_.json".format(constraint_name),'w') as f:
+    #     #     json.dump(perSampleMetrics,f,indent=4)
+    #     resDict['per_sample'].update(perSampleMetrics)
+    #     # resDict['per_sampleART'] = perSampleMetrics
+    
     # import json
     # print("Here")
     # with open('temp.json','w') as f:
