@@ -239,22 +239,22 @@ var ClassVisualization = function(){
         return Array(ox,oy);
     };
     this.getOffset = function(evt){      
-      var el = evt.target,
-          x = y = 0;
+        var el = evt.target,
+            x = y = 0;
 
         while (el && !isNaN(el.offsetLeft) && !isNaN(el.offsetTop)) {
-          x += el.offsetLeft - el.scrollLeft;
-          y += el.offsetTop - el.scrollTop;
-          el = el.offsetParent;
-       }
+            x += el.offsetLeft - el.scrollLeft;
+            y += el.offsetTop - el.scrollTop;
+            el = el.offsetParent;
+        }
         x = evt.clientX - x;
         y = evt.clientY - y;
 
 
-      return {x: x, y: y};
+        return {x: x, y: y};
     };
     
-   
+
     this.table_sizes = function(){
         $(".div_table").scroll(function(e){
             var pos_y = $(this).scrollTop();
@@ -287,31 +287,32 @@ var ClassVisualization = function(){
             });
 
             if (pointsList[0].x < pointsList[1].x){
-                 TL = pointsList[0];
-                 TR = pointsList[1];
-             }else{
-                 TL = pointsList[1];
-                 TR = pointsList[0];
-             }
+                    TL = pointsList[0];
+                    TR = pointsList[1];
+                }else{
+                    TL = pointsList[1];
+                    TR = pointsList[0];
+                }
             if (pointsList[2].x < pointsList[3].x){
-                 BL = pointsList[2];
-                 BR = pointsList[3];
-             }else{
-                 BL = pointsList[3];
-                 BR = pointsList[2];
-             }
-         }else if (bb.length == 4){
+                    BL = pointsList[2];
+                    BR = pointsList[3];
+                }else{
+                    BL = pointsList[3];
+                    BR = pointsList[2];
+                }
+        }
+        else if (bb.length == 4){
             TL = {"x" : bb[0] , "y":bb[3]};
             TR = {"x" : bb[2] , "y":bb[3]};
             BL = {"x" : bb[0] , "y":bb[1]};
             BR = {"x" : bb[2] , "y":bb[1]};
         } else {
-           // bb has 2*N points. we want to find TL, TR, BL, BR point to cover polygon
-           var num_points = Math.round(bb.length/2);
-           BL = {"x" : bb[0] , "y":bb[1]};
-           BR = {"x" : bb[num_points-2] , "y":bb[num_points-1]};
-           TR = {"x" : bb[num_points] , "y":bb[num_points+1]};
-           TL = {"x" : bb[2*num_points-2] , "y":bb[2*num_points-1]};
+            // bb has 2*N points. we want to find TL, TR, BL, BR point to cover polygon
+            var num_points = Math.round(bb.length/2);
+            BL = {"x" : bb[0] , "y":bb[1]};
+            BR = {"x" : bb[num_points-2] , "y":bb[num_points-1]};
+            TR = {"x" : bb[num_points] , "y":bb[num_points+1]};
+            TL = {"x" : bb[2*num_points-2] , "y":bb[2*num_points-1]};
         }
         var height = Math.round(this.original_to_zoom_val_y(parseInt( Math.min(TL.y,TR.y) )+1) - this.original_to_zoom_val_y(parseInt(Math.max(BL.y,BR.y)))) - 3;
         var width = Math.round(this.original_to_zoom_val(parseInt( Math.min(TR.x,BR.x) )+1) - this.original_to_zoom_val(parseInt(Math.max(TL.x,BL.x)))) - 3;
@@ -329,12 +330,12 @@ var ClassVisualization = function(){
 
         while(textWidth>width && fontSize>6){
             fontSize--;
-             ctx.font= fontSize + "px Verdana";
+            ctx.font= fontSize + "px Verdana";
             metrics = ctx.measureText(text);
             textWidth = metrics.width;
         }
         ctx.fillText(text,this.original_to_zoom_val(parseInt(BL.x)) + 3 , this.original_to_zoom_val_y(parseInt(BL.y)) + fontSize);
-  
+
     };
     
 };
