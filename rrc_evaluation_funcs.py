@@ -381,7 +381,7 @@ def get_tl_line_values_from_dict(content,CRLF=True,withScript=False,withTranscri
 
     return pointsList,confidencesList,transcriptionsList,artList
 
-def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_method_fn,show_result=True,per_sample=True):
+def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_method_fn,save_name,show_result=True,per_sample=True):
     """
     This process validates a method, evaluates it and if it succed generates a ZIP file with a JSON entry for each sample.
     Params:
@@ -403,8 +403,10 @@ def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_met
     evalParams = default_evaluation_params_fn()
     if 'p' in p.keys():
         evalParams.update( p['p'] if isinstance(p['p'], dict) else json.loads(p['p'][1:-1]) )
-
-    resDict={'calculated':True,'Message':'','method':'{}','per_sample':'{}'}    
+    resDict={'calculated':True,'Message':'','method':'{}','per_sample':'{}'}
+    # from config.config import constraints
+    # for constraint_name,constraint_val in constraints.items():
+    #     resDict['per_sample_'+constraint_name] = '{}'
     # validate_data_fn(p['g'], p['s'], evalParams)  
     evalData = evaluate_method_fn(p['g'], p['s'], evalParams)
     resDict.update(evalData)
@@ -413,7 +415,7 @@ def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_met
         if not os.path.exists(p['o']):
             os.makedirs(p['o'])
 
-        resultsOutputname = p['o'] + '/results.zip'
+        resultsOutputname = p['o'] + '/results_{}.zip'.format(save_name)
         outZip = zipfile.ZipFile(resultsOutputname, mode='w', allowZip64=True)
 
         del resDict['per_sample']

@@ -47,18 +47,17 @@
         {% endif%}
     
         <div class='navigation'>
-            {% set num_pages = math.ceil(vars["images"].__len__() | float / 20) | int %}
             {% if vars["page"]>1 %}
                 <a class="pure-button button-secondary" href='../method/?m={{vars["subm_data"]["submitId"]}}&p={{vars["page"]-1}}'>< previous</a>
             {% endif %}
-            <span class='current'>Page {{vars["page"]}} of {{num_pages}}</span>
-            {% if vars["page"] < num_pages %}
+            <span class='current'>Page {{vars["page"]}} of {{vars["num_pages"]}}</span>
+            {% if vars["page"] < vars["num_pages"] %}
                 <a class="pure-button button-secondary" href='../method/?m={{vars["subm_data"]["submitId"]}}&p={{vars["page"]+1}}'>next ></a>
             {% endif %}
         </div>
     
         <div class="samples_list">
-                {% for name in vars["images"][(vars["page"]-1)*20:vars["page"]*20] %}
+                {% for name in vars["images_list"] %}
                     {% set index = loop.index0 %}
                     {% set sampleId = image_name_to_id(name) %}
                     {% set values = custom_json_filter(zip_path,sampleId)%}

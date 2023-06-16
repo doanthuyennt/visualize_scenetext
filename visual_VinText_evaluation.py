@@ -1,19 +1,14 @@
-from flask import Flask,flash, render_template, Response, request, session, redirect, url_for, jsonify
-from flask import send_from_directory ,send_file
-from flask_restful import Resource, Api
-from flask_cors import CORS
+from flask import Flask,flash, render_template, Response, request, session, redirect
+from flask import send_from_directory
 
 from flask_apscheduler import APScheduler
 
 
-import urllib.parse
-import requests
 
-import os,io,sys,timeit
-import zipfile,json,re,math
+import os,sys
+import zipfile,json,math
 from datetime import datetime
 
-# import web
 
 sys.path.append('./')
 
@@ -30,147 +25,29 @@ from arg_parser import PARAMS
 
 from PIL import Image
 
+from routes.image_route import image_blueprint
+from routes.sample_route import sample_blueprint
+
+from utils.utils import image_name_to_id, get_samples, get_sample_id_from_num
+
+from database.query import add_submission, edit_submission, init_database, get_submission, get_all_submissions, delete_submission
 
 app = Flask(__name__)
 app.secret_key = "secret key"
-gTArchivePath = os.path.join(".","gt","gt.zip")
-gTArchive = zipfile.ZipFile(gTArchivePath,'r')
+app.register_blueprint(
+    image_blueprint
+)
+app.register_blueprint(
+    sample_blueprint
+)
+
+init_database()
 
 
-dbPath = os.path.join(".","output","submits")
-conn = sqlite3.connect(dbPath)
-cursor = conn.cursor()
-cursor.execute("""CREATE TABLE IF NOT EXISTS submission(id integer primary key autoincrement, title varchar(50), sumbit_date varchar(12),results TEXT)""")
-conn.commit()
-
-cursor.execute('SELECT id,title,sumbit_date,results FROM submission')
-sumbData = cursor.fetchall()
-conn.close()
-
-def image_name_to_id(name):
-    # m = re.match(image_name_to_id_str,name)
-    # if m == None:
-    #     return False
-    # id = m.group(1)
-    id = name.replace('.jpg', '').replace('.png', '').replace('.gif', '').replace('.bmp', '').replace('.json', '').replace('.jpeg', '')
-    if id+'.json' not in gTArchive.namelist():
-        return False
-    return id
-
-
-def get_sample_id_from_num(num):
-    imagesFilePath = os.path.join(".","gt","images.zip")
-    archive = zipfile.ZipFile(imagesFilePath,'r')
-    current = 0
-    for image in archive.namelist():
-        if image_name_to_id(image) != False:
-            current += 1
-            if (current == num):
-                return image_name_to_id(image)
-            
-    return False
-	
-def get_sample_from_num(num):
-    imagesFilePath = os.path.join(".","gt","images.zip")
-    archive = zipfile.ZipFile(imagesFilePath,'r')
-    current = 0
-    for image in archive.namelist():
-        if image_name_to_id(image) != False:
-            current += 1
-            if (current == num):
-                return image,archive.read(image)
-            
-    return False	
-
-def get_samples():
-    imagesFilePath = os.path.join(".","gt","images.zip")
-    archive = zipfile.ZipFile(imagesFilePath,'r')
-    num_samples = 0
-    samples_list = []
-    for image in archive.namelist():
-        if image_name_to_id(image) != False:
-            num_samples += 1
-            samples_list.append(image)
-    return num_samples,samples_list
-
-
-@app.route('/delete_all', methods=['POST'])
-def delete_all():
-    output_folder = os.path.join(".", "output")
-    try:    
-        for root, dirs, files in os.walk(output_folder, topdown=False):
-            for f in files:
-                os.remove(os.path.join(root, f))
-            for d in dirs:
-                os.rmdir(os.path.join(root, d))
-    except:
-        print("Unexpected error:", sys.exc_info()[0])
-
-
-@app.route('/delete_method', methods=['POST'])
-def delete_method():
-    id = request.form['id']
-    dbPath = os.path.join(".","output","submits")
-    conn = sqlite3.connect(dbPath)
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM submission WHERE id=?',(id,))
-    conn.commit()
-    conn.close()
-    
-    try:
-        output_folder = os.path.join(".","output","results_" + id)
-        if os.path.isdir(output_folder):
-            for root, dirs, files in os.walk(output_folder, topdown=False):
-                for f in files:
-                    os.remove(os.path.join(root, f))
-                for d in dirs:
-                    os.rmdir(os.path.join(root, d))
-            os.rmdir(output_folder)
-        subm_file = os.path.join(".","output","results_" + id + "." + gt_ext)
-        results_file = os.path.join(".","output","subm_" + id + ".zip")
-        os.remove(subm_file)
-        os.remove(results_file)
-    except:
-        print("Unexpected error:", sys.exc_info()[0])
-        
-
-@app.route('/edit_method', methods=['POST'])
-def edit_method():
-    id = request.forms.get('id')
-    name = request.forms.get('name')
-    
-    dbPath = os.path.join(".","output","submits")
-    conn = sqlite3.connect(dbPath)
-    cursor = conn.cursor()
-    cursor.execute('UPDATE submission SET title=? WHERE id=?',(name,id))
-    conn.commit()
-    conn.close()    
-    
-def get_all_submissions():
-    dbPath = os.path.join(".","output","submits")
-    conn = sqlite3.connect(dbPath)
-    cursor = conn.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS submission(id integer primary key autoincrement, title varchar(50), sumbit_date varchar(12),results TEXT)""")
-    conn.commit()
-
-    cursor.execute('SELECT id,title,sumbit_date,results FROM submission')
-    sumbData = cursor.fetchall()
-    conn.close()
-    return sumbData
-
-
-def get_submission(id):
-    dbPath = os.path.join(".","output","submits")
-    conn = sqlite3.connect(dbPath)
-    cursor = conn.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS submission(id integer primary key autoincrement, title varchar(50), sumbit_date varchar(12),results TEXT)""")
-    conn.commit()
-    
-    cursor.execute('SELECT id,title,sumbit_date,results FROM submission WHERE id=?',(id,))
-    sumbData = cursor.fetchone()
-    conn.close()
-    
-    return sumbData
+imagesFilePath = os.path.join(".","gt","images.zip")
+archive = zipfile.ZipFile(imagesFilePath,'r')
+L = archive.namelist()
+L.sort(key = lambda x: x.split('_')[1].split('.')[0].zfill(4))
 
 
 @app.route('/',methods=["GET","POST"])
@@ -204,77 +81,6 @@ def index():
             'extension':gt_ext
             }
     return render_template('index.html',vars=vars)
-
-@app.route('/test',methods=["GET","POST"])
-def test():
-    return jsonify({"name":"Thuyen"})
-
-@app.route('/exit')
-def exit():
-    sys.stderr.close()
-
-
-
-
-@app.route('/sample/')
-def sample():
-    
-    num_samples,images_list = get_samples()    
-
-    sample = int(request.args['sample'])
-    methodId = request.args['m']
-    subm_data = get_submission(methodId)
-
-    samplesValues = []
-    
-    id = get_sample_id_from_num(int(sample))
-    sampleId = id + ".json"
-    
-    subms = get_all_submissions()
-    for methodId,methodTitle,_,_ in subms:
-        sampleResults = {"id":methodId, "title":methodTitle}
-        zipFolderPath = os.path.join(".","output","results_" + str(methodId))
-        sampleFilePath = zipFolderPath + "/" + sampleId
-        exist = True
-        if os.path.isfile(sampleFilePath) == False:
-            submFilePath = os.path.join(".","output","results_" + str(methodId) + ".zip")
-            archive = zipfile.ZipFile(submFilePath,'r')
-        
-            if os.path.exists(zipFolderPath) == False:
-                os.makedirs(zipFolderPath)
-            try:
-                archive.extract(sampleId, zipFolderPath)
-            except:
-                exist = False
-        if exist:
-            file = open(sampleFilePath,"r")
-            results = json.loads(file.read())
-            file.close()
-        
-        if exist:
-            for k,v in sample_params.items():
-                sampleResults[k] = results[k]
-        else:
-            for k,v in sample_params.items():
-                sampleResults[k] = 0.0
-        samplesValues.append( sampleResults )
-
-
-    # for d in dir(request):
-    #     print(d)
-    vars = {
-                'acronym':acronym,
-                'title':title + ' - Sample ' + str(sample) + ' : ' + images_list[sample-1],
-                'sample':sample,
-                'num_samples':num_samples,
-                'subm_data':subm_data,
-                'samplesValues':samplesValues,
-                'sample_params':sample_params,
-                'customJS':customJS,
-                'customCSS':customCSS
-            }
-    return render_template('sample.html',vars=vars)
-
 
 @app.route('/evaluate', methods=['POST','GET'])
 def evaluate():
@@ -334,30 +140,19 @@ def evaluate():
             os.remove(p['s'])
 
         submFile.save(p['s'])
-
+        
+        import random
+        import string
+        save_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         module = importlib.import_module(evaluation_script )
-        resDict = rrc_evaluation_funcs.main_evaluation(p,module.default_evaluation_params,module.validate_data,evaluate_method)
+        p["save_name"] = save_name
+        resDict = rrc_evaluation_funcs.main_evaluation(p,module.default_evaluation_params,module.validate_data,evaluate_method,save_name=save_name)
 
         
         if resDict['calculated']==True:
-            dbPath = os.path.join(".","output","submits")
-            conn = sqlite3.connect(dbPath)
-            cursor = conn.cursor()
-            
-            if 'title' in request.form.keys():
-                submTitle = request.form['title']
-            if submTitle=="":
-                submTitle = "unnamed"
-                
-            cursor.execute('INSERT INTO submission(title,sumbit_date,results) VALUES(?,?,?)',(submTitle ,datetime.now().strftime("%Y-%m-%d %H:%M"),json.dumps(resDict['method'],indent=4)))
-            conn.commit()
-            id = cursor.lastrowid
-
-            os.rename(p['s'], p['s'].replace("subm." + gt_ext,"subm_" + str(id) + "." + gt_ext) )
-            os.rename(p['o'] + "/results.zip", p['o'] + "/results_" + str(id) + ".zip" )
-
-            conn.close()
-
+            method_result = json.dumps(resDict['method'],indent=4)
+            add_submission(method_result, p)
+        
         # if request.args['json']=="1":
         #     return json.dumps( {"calculated": resDict['calculated'],"Message": resDict['Message'],'id':id},indent=4 )
         # else:
@@ -366,74 +161,6 @@ def evaluate():
         'title':'Method Upload ' + title,'resDict':resDict,'id':id}
         return render_template('upload.html',vars=vars)    
 
-@app.route('/image_thumb/', methods=['GET'])
-def image_thumb():
-
-    sample = int(request.args['sample'])
-    fileName,data = get_sample_from_num(sample)
-    ext = fileName.split('.')[-1]
-    
-    f = io.BytesIO(data)	
-    image = Image.open(f)
-
-    maxsize = (205, 130)
-    image.thumbnail(maxsize)
-    output = io.BytesIO()
-	
-    if ext=="jpg" or ext=="jpeg":
-            im_format = "JPEG"
-            header = "image/jpeg"
-            image.save(output,im_format, quality=80, optimize=True, progressive=True)
-    elif ext == "gif":
-            im_format = "GIF"
-            header = "image/gif"
-            image.save(output,im_format)
-    elif ext == "png":
-            im_format = "PNG"
-            header = "image/png"
-            image.save(output,im_format, optimize=True)
-    
-    contents = output.getvalue()
-
-    output.close()
-    
-    return send_file(
-        io.BytesIO(contents),
-        mimetype='image/jpeg',
-        )
-
-@app.route('/image/', methods=['GET'])
-def image():
-    sample = int(request.args['sample'])
-    fileName,data = get_sample_from_num(sample)
-
-    ext = fileName.split('.')[-1]
-    f = io.BytesIO(data)
-    image = Image.open(f)
-    output = io.BytesIO()
-    if ext=="jpg" or ext=="jpeg":
-            im_format = "JPEG"
-            header = "image/jpeg"
-            image.save(output,im_format, quality=80, optimize=True, progressive=True)
-    elif ext == "gif":
-            im_format = "GIF"
-            header = "image/gif"
-            image.save(output,im_format)
-    elif ext == "png":
-            im_format = "PNG"
-            header = "image/png"
-            image.save(output,im_format, optimize=True)        
-    
-    
-    contents = output.getvalue()
-    output.close()
-    
-    body = data
-
-    return send_file(
-        io.BytesIO(contents),
-        mimetype='image/jpeg',
-        )
 
 @app.route('/gt/<path:path>')
 def send_gt(path):
@@ -447,15 +174,6 @@ def send_css(path):
 def send_js(path):
     return send_from_directory('js', path)
 
-@app.route('/sampleInfo/', methods=['GET'])
-def get_sample_info():
-    methodId = request.args['m']    
-    print(methodId)
-    submFilePath = os.path.join(".","output","results_" + str(methodId) + ".zip")
-    archive = zipfile.ZipFile(submFilePath,'r')
-    id = get_sample_id_from_num(int(request.args['sample']))
-    results = json.loads(archive.read(id + ".json"))
-    return json.dumps(results)
 
 @app.route('/method/', methods=['GET'])
 def method():
@@ -463,7 +181,6 @@ def method():
     # print(request.full_path)
     print(request.host_url)
     # input()
-    _,images_list = get_samples()
     
     results = None
     page = 1
@@ -497,7 +214,9 @@ def method():
         'id':id,
         'acronym':acronym, 
         'title':title,
-        'images':images_list,
+        # 'images':images_list,
+        'images_list': L[(page-1)*20:page*20],
+        'num_pages': math.ceil(len(L) / 20), 
         'method_params':method_params,
         'sample_params':sample_params,
         'results':results,
@@ -506,6 +225,44 @@ def method():
     }
     return render_template('method.html',vars=vars)
 
+@app.route('/edit_method', methods=['POST'])
+def edit_method():
+    id = request.form['id']
+    name = request.form['name']
+    edit_submission(id, name)
+
+@app.route('/delete_method', methods=['POST'])
+def delete_method():
+    id = request.form['id']
+    delete_submission(id)
+
+    try:
+        output_folder = os.path.join(".","output","results_" + id)
+        if os.path.isdir(output_folder):
+            for root, dirs, files in os.walk(output_folder, topdown=False):
+                for f in files:
+                    os.remove(os.path.join(root, f))
+                for d in dirs:
+                    os.rmdir(os.path.join(root, d))
+            os.rmdir(output_folder)
+        subm_file = os.path.join(".","output","results_" + id + "." + gt_ext)
+        results_file = os.path.join(".","output","subm_" + id + ".zip")
+        os.remove(subm_file)
+        os.remove(results_file)
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+
+@app.route('/delete_all', methods=['POST'])
+def delete_all():
+    output_folder = os.path.join(".", "output")
+    try:    
+        for root, dirs, files in os.walk(output_folder, topdown=False):
+            for f in files:
+                os.remove(os.path.join(root, f))
+            for d in dirs:
+                os.rmdir(os.path.join(root, d))
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
 
 if __name__=='__main__':
     scheduler = APScheduler()

@@ -35,15 +35,37 @@ customJS = 'visualization_TL_iou.js'
 #Custom CSS for the visualiztion.
 customCSS = 'visualization_TL_iou.css'
 #Parameters used to show the results of a method and the method's ranking
-method_params = json.loads("""{"recall":{"long_name":"Recall","type":"double","order":"","grafic":"1","format":"perc"},
-                           "precision":{"long_name":"Precision","type":"double","order":"","grafic":"1","format":"perc"},
-                           "hmean":{"long_name":"Hmean","type":"double","order":"desc","grafic":"1","format":"perc"},
-                           "ned":{"long_name":"NED","type":"","order":"","grafic":"1","format":""}}""")
+
+# constraints = {
+#     '0.5':0.5,
+#     '0.7':0.7,
+#     } 
+
+method_params = json.loads("""{"recall":{"long_name":"Recall","type":"double","order":"","grafic":"1","format":"perc","art":""},
+                           "precision":{"long_name":"Precision","type":"double","order":"","grafic":"1","format":"perc","art":""},
+                           "hmean":{"long_name":"Hmean","type":"double","order":"desc","grafic":"1","format":"perc","art":""},
+                           "ned":{"long_name":"NED","type":"double","order":"","grafic":"1","format":"perc","art":""}
+                           }""")
+
 #Parameters to show for each sample
-sample_params = json.loads("""{"recall":{"long_name":"Recall","type":"double","order":"","grafic":"","format":"perc"},
-                           "precision":{"long_name":"Precision","type":"double","order":"","grafic":"","format":"perc"},
-                           "hmean":{"long_name":"Hmean","type":"double","order":"desc","grafic":"","format":"perc"},
-                           "ned":{"long_name":"NED","type":"","order":"","grafic":"","format":""}}""")
+sample_params = json.loads("""{"recall":{"long_name":"Recall","type":"double","order":"","grafic":"","format":"perc","art":""},
+                           "precision":{"long_name":"Precision","type":"double","order":"","grafic":"","format":"perc","art":""},
+                           "hmean":{"long_name":"Hmean","type":"double","order":"desc","grafic":"","format":"perc","art":""},
+                           "ned":{"long_name":"NED","type":"double","order":"","grafic":"","format":"perc","art":""}
+                           }""")
+
+# 
+
+# for constraint_name,constraint_val in constraints.items():
+#     method_params["recallART "+constraint_name] = {"long_name":"recallART "+constraint_name,"type":"double","order":"","grafic":"","format":"perc","art":constraint_name}
+#     method_params["precisionART "+constraint_name] = {"long_name":"precisionART "+constraint_name,"type":"double","order":"","grafic":"","format":"perc","art":constraint_name}
+#     method_params["hmeanART "+constraint_name] = {"long_name":"hmeanART "+constraint_name,"type":"double","order":"desc","grafic":"","format":"perc","art":constraint_name}
+#     method_params["nedART "+constraint_name] = {"long_name":"nedART "+constraint_name,"type":"double","order":"","grafic":"","format":"perc","art":constraint_name}
+# for constraint_name,constraint_val in constraints.items():
+#     sample_params["recall_ART_"+constraint_name] = {"long_name":"recallART "+constraint_name,"type":"double","order":"","grafic":"1","format":"perc","art":constraint_name}
+#     sample_params["precision_ART_"+constraint_name] = {"long_name":"precisionART "+constraint_name,"type":"double","order":"","grafic":"1","format":"perc","art":constraint_name}
+#     sample_params["hmean_ART_"+constraint_name] = {"long_name":"hmeanART "+constraint_name,"type":"double","order":"desc","grafic":"1","format":"perc","art":constraint_name}
+#     sample_params["ned_ART_"+constraint_name] = {"long_name":"nedART "+constraint_name,"type":"double","order":"","grafic":"1","format":"perc","art":constraint_name}
 #Parameters to ask for for each submition
 submit_params = json.loads("""{}""")
 #Regular expression to get the Sample ID from the image name. ID must be the first capturing group.

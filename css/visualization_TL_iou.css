@@ -14,7 +14,7 @@
 }
 
 div.container_canvas{
-    width: 50%;
+    width: 33%;
     vertical-align: top;
     position: relative;
     height: 400px;
@@ -30,6 +30,49 @@ div.container_canvas h3, #div_sample_info h3{
     line-height: 29px;
 }
 
+div.container_canvas_rec{
+    width: 33%;
+    vertical-align: top;
+    position: relative;
+    height: 400px;
+    display: inline-block;  
+    border: 1px solid #999;
+    box-sizing: border-box;
+    /* overflow: scroll; */
+    
+}
+div.container_canvas_rec div.div_sample_info_rec{
+    border-bottom: 1px solid #999;
+    height: 360px;
+    overflow: scroll;
+}
+
+/* width */
+div.container_canvas_rec div.div_sample_info_rec::-webkit-scrollbar {
+    width: 10px;
+}
+
+/* Track */
+div.container_canvas_rec div.div_sample_info_rec::-webkit-scrollbar-track {
+    background: #f1f1f1; 
+}
+  /* Handle */
+div.container_canvas_rec div.div_sample_info_rec::-webkit-scrollbar-thumb {
+    background: #888; 
+}
+
+/* Handle on hover */
+div.container_canvas_rec div.div_sample_info_rec::-webkit-scrollbar-thumb:hover {
+    background: #555; 
+}
+
+div.container_canvas_rec h3{
+    margin: 0px;
+    padding: 0px 10px;
+    background-color: #eee;
+    border-bottom: 1px solid #999;
+    line-height: 29px;
+}
 
 #img_gt_image2{
     display: none;

@@ -27,8 +27,8 @@ def default_evaluation_params():
     default_evaluation_params: Default parameters to use for the validation and evaluation.
     """
     return {
-            'AREA_RECALL_CONSTRAINT' : 0.4,
-            'AREA_PRECISION_CONSTRAINT' :0.4,
+            'AREA_RECALL_CONSTRAINT' : 0.6,
+            'AREA_PRECISION_CONSTRAINT' :0.6,
             'EV_PARAM_IND_CENTER_DIFF_THR': 1,
             'IOU_CONSTRAINT' :0.5,
             'GT_SAMPLE_NAME_2_ID':'.*([0-9]+).*',
@@ -40,7 +40,43 @@ def default_evaluation_params():
             'CONFIDENCES': False, # Detections must include confidence value. AP will be calculated
             'TRANSCRIPTION': False, # Does prediction has transcription or not
             'PER_SAMPLE_RESULTS': True, # Generate per sample results and produce data for visualization
+            'WORD_SPOTTING': True,
             }
+
+def transcription_match(transGt,transDet,specialCharacters='!?.:,*"()·[]/\'',onlyRemoveFirstLastCharacterGT=True):
+    
+    if onlyRemoveFirstLastCharacterGT:
+        #special characters in GT are allowed only at initial or final position
+        if (transGt==transDet):
+            return True        
+
+        if specialCharacters.find(transGt[0])>-1:
+            if transGt[1:]==transDet:
+                return True
+
+        if specialCharacters.find(transGt[-1])>-1:
+            if transGt[0:len(transGt)-1]==transDet:
+                return True
+
+        if specialCharacters.find(transGt[0])>-1 and specialCharacters.find(transGt[-1])>-1:
+            if transGt[1:len(transGt)-1]==transDet:
+                return True
+        return False
+    else:
+        #Special characters are removed from the begining and the end of both Detection and GroundTruth
+        while len(transGt)>0 and specialCharacters.find(transGt[0])>-1:
+            transGt = transGt[1:]
+            
+        while len(transDet)>0 and specialCharacters.find(transDet[0])>-1:
+            transDet = transDet[1:]
+            
+        while len(transGt)>0 and specialCharacters.find(transGt[-1])>-1 :
+            transGt = transGt[0:len(transGt)-1]
+            
+        while len(transDet)>0 and specialCharacters.find(transDet[-1])>-1:
+            transDet = transDet[0:len(transDet)-1]
+            
+        return transGt == transDet
 
 def validate_data(gtFilePath, submFilePath,evaluationParams):
     """
@@ -273,7 +309,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             return 0
 
     # global evalute
-    def evalute(resFile,gt,subm,evaluationParams):
+    def evalute(resFile,gt,subm,evaluationParams,validating_art=False,constraint_name=None):
 
         arrGlobalConfidences = []
         arrGlobalMatches = []
@@ -344,9 +380,12 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(gtFile, evaluationParams['GT_CRLF'], evaluationParams['GT_LTRB'], True, False)
         for n in range(len(pointsList)):
             points = pointsList[n]
+            points = list(map(int,points))
             transcription = transcriptionsList[n]
-            art = artList[n]
+            art = True
             dontCare = transcription == "###"
+            if len(transcription) == 0:
+                continue
             if evaluationParams['GT_LTRB']:
                 gtRect = Rectangle(*points)
                 gtPol = rectangle_to_polygon(gtRect)
@@ -377,36 +416,53 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         evaluationLog += "GT polygons: " + str(len(gtPols)) + (" (" + str(len(gtDontCarePolsNum)) + " don't care)\n" if len(gtDontCarePolsNum)>0 else "\n")
 
         # GT Don't Care overlap
-        for DontCare in gtDontCarePolsNum:
-            for gtNum in list(set(range(len(gtPols))) - set(gtDontCarePolsNum)):
-                if get_intersection(gtPols[gtNum].polygon, gtPols[DontCare].polygon) > 0:
-                    gtPols[DontCare].polygon -= gtPols[gtNum].polygon
+        # for DontCare in gtDontCarePolsNum:
+        #     for gtNum in list(set(range(len(gtPols))) - set(gtDontCarePolsNum)):
+        #         if get_intersection(gtPols[gtNum].polygon, gtPols[DontCare].polygon) > 0:
+        #             gtPols[DontCare].polygon -= gtPols[gtNum].polygon
 
         if resFile in subm:
             
             detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
 
-            # pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
-            pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
+            pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
+            # pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
             for n in range(len(pointsList)):
                 points = pointsList[n]
+                points = list(map(int,points))
                 transcription = transcriptionsList[n]
-                detTrans.append(transcription)
                 if evaluationParams['DET_LTRB']:
                     detRect = Rectangle(*points)
                     detPol = rectangle_to_polygon(detRect)
                     points = polygon_to_points(detPol)
+                    detPols.append(detPol)
+                    detPolPoints.append(points)
+                    detTrans.append(transcription)
                 else:
                     ############## Modify by Tran Thuyen 21/05/2021 ##############
                     # detPol = polygon_from_points(points)
                     try:       
-                        detPol = MY_POLY(points,transcription).make_polygon_obj()
-                    except ValueError:
-                        print(points,"\t",resFile)
+                        if len(points) %2 != 0:
+                            points = points[-1]
+                        # print(type(points))
+                        points = np.clip(points,0,a_max = None).tolist()                
+
+                        detPol = MY_POLY(points,transcription)
+                        
+                        overlapList = np.array([get_intersection_over_union(detPol.polygon,gtPols[gtNum].polygon) for gtNum in range(len(gtPols))])
+                        if len(overlapList) > 0 and validating_art:
+                            overlapList = np.array(overlapList)
+                            popList = np.where(overlapList > 0.1)[0]
+                            argMax = np.argmax(overlapList)
+                            if gtPols[argMax].art == False:
+                                continue
+                        detPols.append(detPol)
+                        detPolPoints.append(points)
+                        detTrans.append(transcription)
+                    except Exception as E:
+                        # print(points,"\t",resFile)
+                        print(E)
                     ##############################################################
-                detPols.append(detPol)
-                detPolPoints.append(points)
-                
             evaluationLog += "DET polygons: " + str(len(detPols))
 
             if len(gtPols)>0 and len(detPols)>0:
@@ -430,169 +486,225 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         precisionMat[gtNum,detNum] = 0 if pD.area()==0 else intersected_area / pD.area()
                         detCharCounts.append(np.zeros(len(gtCharPoints[gtNum])))
                     gtCharCounts.append(detCharCounts)
-                    
-                # Find detection Don't Care
                 if len(gtDontCarePolsNum)>0 :
-                    for detNum in range(len(detPols)):
-                        # many-to-one
-                        many_sum = 0
-                        for gtNum in gtDontCarePolsNum:
-                            if recallMat[gtNum, detNum] > evaluationParams['AREA_RECALL_CONSTRAINT']:
-                                many_sum += precisionMat[gtNum, detNum]
-                        if many_sum >= evaluationParams['AREA_PRECISION_CONSTRAINT']:
-                            detDontCarePolsNum.append(detNum)
-                        else:
-                            for gtNum in gtDontCarePolsNum:
-                                if precisionMat[gtNum, detNum] > evaluationParams['AREA_PRECISION_CONSTRAINT']:
-                                    detDontCarePolsNum.append(detNum)
-                                    break
-                        # many-to-one for mixed DC and non-DC
-                        for gtNum in gtDontCarePolsNum:
-                            if recallMat[gtNum, detNum] > 0:
-                                detPols[detNum].polygon -= gtPols[gtNum].polygon
-                    for dontCarePol in gtDontCarePolsNum_NED:
+                    for dontCarePol in gtDontCarePolsNum:
                         dontCarePol = gtPols[dontCarePol].polygon
                         intersected_area = get_intersection(dontCarePol,detPol.polygon)
                         pdDimensions = detPol.polygon.area()
                         precision = 0 if pdDimensions == 0 else intersected_area / pdDimensions
                         if (precision > evaluationParams['AREA_PRECISION_CONSTRAINT'] ):
-                            detDontCarePolsNum_NED.append( len(detPols)-1 )
-                            break                                    
-                    evaluationLog += " (" + str(len(detDontCarePolsNum)) + " don't care)\n" if len(detDontCarePolsNum)>0 else "\n"
-                
-                # Recalculate matrices
+                            detDontCarePolsNum.append( len(detPols)-1 )
+                            break
+                            
+            evaluationLog += "DET polygons: " + str(len(detPols)) + (" (" + str(len(detDontCarePolsNum)) + " don't care)\n" if len(detDontCarePolsNum)>0 else "\n")
+            
+            if len(gtPols)>0 and len(detPols)>0:
+                #Calculate IoU and precision matrixs
+                outputShape=[len(gtPols),len(detPols)]
+                iouMat = np.empty(outputShape)
+                gtRectMat = np.zeros(len(gtPols),np.int8)
+                detRectMat = np.zeros(len(detPols),np.int8)
                 for gtNum in range(len(gtPols)):
                     for detNum in range(len(detPols)):
                         pG = gtPols[gtNum].polygon
                         pD = detPols[detNum].polygon
-                        intersected_area = get_intersection(pD,pG)
-                        recallMat[gtNum,detNum] = 0 if pG.area()==0 else intersected_area / pG.area()
-                        precisionMat[gtNum,detNum] = 0 if pD.area()==0 else intersected_area / pD.area()
                         iouMat[gtNum,detNum] = get_intersection_over_union(pD,pG)
-                        ###### NED score by MLT_task_4_1_0.py added 14/10/2021 ######
-                        if gtRectMat[gtNum] == 0 and detRectMat[detNum] == 0 and gtNum not in gtDontCarePolsNum_NED and detNum not in detDontCarePolsNum_NED :
+
+                for gtNum in range(len(gtPols)):
+                    for detNum in range(len(detPols)):
+                        if gtRectMat[gtNum] == 0 and detRectMat[detNum] == 0 and gtNum not in gtDontCarePolsNum and detNum not in detDontCarePolsNum :
                             if iouMat[gtNum,detNum]>evaluationParams['IOU_CONSTRAINT']:
                                 gtRectMat[gtNum] = 1
                                 detRectMat[detNum] = 1
-                                #detection matched only if transcription is equal (case insensitive)
-                                correct_ = gtTrans[gtNum] == detTrans[detNum]
-                                correctUpper = gtTrans[gtNum].upper() == detTrans[detNum].upper()
-                                
-                                detCorrect += (1 if correct_ else 0)
-                                detCorrectUpper += (1 if correctUpper else 0)
-                                if correctUpper:
+                                # #detection matched only if transcription is equal
+                                if evaluationParams['WORD_SPOTTING']:
+                                    correct = gtTrans[gtNum].upper() == detTrans[detNum].upper()
+                                else:
+                                    correct = transcription_match(gtTrans[gtNum].upper(),detTrans[detNum].upper(),evaluationParams['SPECIAL_CHARACTERS'],evaluationParams['ONLY_REMOVE_FIRST_LAST_CHARACTER'])==True
+                                detCorrect += (1 if correct else 0)
+                                if correct:
                                     detMatchedNums.append(detNum)
-                                pairs.append({'gt':[gtNum],'det':[detNum],'correct':correctUpper})
-                                evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + " trancription correct: " + str(correctUpper) + "\n"
-
-                                #Calculate also 1-NED
-                                distance = editdistance.eval(gtTrans[gtNum],detTrans[detNum])
-                                nedSum += 0 if len(gtTrans[gtNum])==0 and len(detTrans[detNum])==0 else float(distance) / max( len(gtTrans[gtNum]), len(detTrans[detNum]) )
-                                nedElements += 1
-                                distanceUpper = editdistance.eval(gtTrans[gtNum].upper(),detTrans[detNum].upper())
-                                nedSumUpper += 0 if len(gtTrans[gtNum])==0 and len(detTrans[detNum])==0 else float(distanceUpper) / max( len(gtTrans[gtNum]), len(detTrans[detNum]) )
-                                nedElementsUpper += 1
-
-                        ############################################################
-
-                ############ Optimize for loop ############
-                for gtNum in range(len(gtPols)):
-                    if gtRectMat[gtNum] == 0 and gtNum not in gtDontCarePolsNum_NED :
-                        nedSum += 1
-                        nedElements += 1
-                        nedSumUpper += 1
-                        nedElementsUpper += 1
-
-                
-                for detNum in range(len(detPols)):
-                    if detRectMat[detNum] == 0 and detNum not in detDontCarePolsNum_NED :
-                        nedSum += 1
-                        nedElements += 1 
-                        nedSumUpper += 1
-                        nedElementsUpper += 1                            
-
-                # Find many-to-one matches
-                evaluationLog += "Find many-to-one matches\n"
-                for detNum in range(len(detPols)):
-                    if detNum not in detDontCarePolsNum:
-                        match, matchesGt = many_to_one_match(detNum,recallMat,precisionMat,gtPols,gtDontCarePolsNum,gtExcludeMat,detExcludeMat)
-                        if match:
-                            pairs.append({'gt':matchesGt, 'det':[detNum], 'type':'MO'})
-                            evaluationLog += "Match GT #" + str(matchesGt) + " with Det #" + str(detNum) + "\n"
-                            
-                # Find one-to-one matches
-                evaluationLog += "Find one-to-one matches\n"
-                for gtNum in range(len(gtPols)):
-                    for detNum in range(len(detPols)):
-                        if gtNum not in gtDontCarePolsNum and detNum not in detDontCarePolsNum :
-                            match = one_to_one_match(gtNum, detNum,recallMat,precisionMat)
-                            if match:
-                                normDist = center_distance(gtPols[gtNum].polygon, detPols[detNum].polygon);
-                                normDist /= diag(gtPolPoints[gtNum]) + diag(detPolPoints[detNum]);
-                                normDist *= 2.0;
-                                if normDist < evaluationParams['EV_PARAM_IND_CENTER_DIFF_THR'] :
-                                    pairs.append({'gt':[gtNum],'det':[detNum],'type':'OO'})
-                                    evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + "\n"
-                                    
-                # Find one-to-many matches
-                evaluationLog += "Find one-to-many matches\n"
-                for gtNum in range(len(gtPols)):
-                    if gtNum not in gtDontCarePolsNum:
-                        match, matchesDet = one_to_many_match(gtNum,recallMat,precisionMat,detDontCarePolsNum,detPolPoints,gtExcludeMat,detExcludeMat,detTrans)
-                        if match:
-                            pairs.append({'gt':[gtNum], 'det':matchesDet, 'type':'OM'})
-                            evaluationLog += "Match Gt #" + str(gtNum) + " with Det #" + str(matchesDet) + "\n"
-
-                # Fill match matrix
-                for pair in pairs:
-                    matchMat[pair['gt'],pair['det']] = 1
-                
-                # Fill character matrix
-                char_fill(np.where(matchMat.sum(axis=0) > 0)[0], matchMat,detPols,gtCharPoints,gtCharCounts)
-
-                # Recall score
-                for gtNum in range(len(gtRectMat)):
-                    if matchMat.sum(axis=1)[gtNum] > 0:
-                        recallAccum += len(np.where(sum(gtCharCounts[gtNum]) == 1)[0]) / len(gtCharPoints[gtNum])
-                        if len(np.where(sum(gtCharCounts[gtNum]) == 1)[0]) / len(gtCharPoints[gtNum]) < 1:
-                            recallScore.append("<font color=red>" + str(len(np.where(sum(gtCharCounts[gtNum]) == 1)[0])) + "/" + str(len(gtCharPoints[gtNum])) + "</font>")
-                        else: recallScore.append(str(len(np.where(sum(gtCharCounts[gtNum]) == 1)[0])) + "/" + str(len(gtCharPoints[gtNum])))
-                    else: recallScore.append("")
-
-                # Precision score
-                for detNum in range(len(detRectMat)):
-                    if matchMat.sum(axis=0)[detNum] > 0:
-                        detTotal = 0; detContain = 0
-                        for gtNum in range(len(gtRectMat)):
-                            if matchMat[gtNum, detNum] > 0:
-                                detTotal += len(gtCharCounts[gtNum][detNum])
-                                detContain += len(np.where(gtCharCounts[gtNum][detNum] == 1)[0])
-                        precisionAccum += detContain / detTotal
-                        if detContain / detTotal < 1:
-                            precisionScore.append("<font color=red>" + str(detContain) + "/" + str(detTotal) + "</font>")
-                        else: precisionScore.append(str(detContain) + "/" + str(detTotal))
-                    else:
-                        precisionScore.append("")
-
-                # Visualization
-                charCounts = np.zeros((len(gtRectMat), len(detRectMat)))
-                for gtNum in range(len(gtRectMat)):
-                    for detNum in range(len(detRectMat)):
-                        charCounts[gtNum][detNum] = sum(gtCharCounts[gtNum][detNum])
-
-
+                                pairs.append({'gt':gtNum,'det':detNum,'correct':correct})
+                                evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + " trans. correct: " + str(correct) + "\n"
+                                
             if evaluationParams['CONFIDENCES']:
                 for detNum in range(len(detPols)):
                     if detNum not in detDontCarePolsNum :
+                        #we exclude the don't care detections
                         match = detNum in detMatchedNums
+
                         arrSampleConfidences.append(confidencesList[detNum])
                         arrSampleMatch.append(match)
-                        arrGlobalConfidences.append(confidencesList[detNum])
-                        arrGlobalMatches.append(match)
 
+                        arrGlobalConfidences.append(confidencesList[detNum]);
+                        arrGlobalMatches.append(match);         
+            
+            '''
+            #     # Find detection Don't Care
+            #     if len(gtDontCarePolsNum)>0 :
+            #         for detNum in range(len(detPols)):
+            #             # many-to-one
+            #             many_sum = 0
+            #             for gtNum in gtDontCarePolsNum:
+            #                 if recallMat[gtNum, detNum] > evaluationParams['AREA_RECALL_CONSTRAINT']:
+            #                     many_sum += precisionMat[gtNum, detNum]
+            #             if many_sum >= evaluationParams['AREA_PRECISION_CONSTRAINT']:
+            #                 detDontCarePolsNum.append(detNum)
+            #             else:
+            #                 for gtNum in gtDontCarePolsNum:
+            #                     if precisionMat[gtNum, detNum] > evaluationParams['AREA_PRECISION_CONSTRAINT']:
+            #                         detDontCarePolsNum.append(detNum)
+            #                         break
+            #             # many-to-one for mixed DC and non-DC
+            #             for gtNum in gtDontCarePolsNum:
+            #                 if recallMat[gtNum, detNum] > 0:
+            #                     detPols[detNum].polygon -= gtPols[gtNum].polygon
+            #         for dontCarePol in gtDontCarePolsNum_NED:
+            #             dontCarePol = gtPols[dontCarePol].polygon
+            #             intersected_area = get_intersection(dontCarePol,detPol.polygon)
+            #             pdDimensions = detPol.polygon.area()
+            #             precision = 0 if pdDimensions == 0 else intersected_area / pdDimensions
+            #             if (precision > evaluationParams['AREA_PRECISION_CONSTRAINT'] ):
+            #                 detDontCarePolsNum_NED.append( len(detPols)-1 )
+            #                 break                                    
+            #         evaluationLog += " (" + str(len(detDontCarePolsNum)) + " don't care)\n" if len(detDontCarePolsNum)>0 else "\n"
+                
+            #     # Recalculate matrices
+            #     for gtNum in range(len(gtPols)):
+            #         for detNum in range(len(detPols)):
+            #             pG = gtPols[gtNum].polygon
+            #             pD = detPols[detNum].polygon
+            #             intersected_area = get_intersection(pD,pG)
+            #             recallMat[gtNum,detNum] = 0 if pG.area()==0 else intersected_area / pG.area()
+            #             precisionMat[gtNum,detNum] = 0 if pD.area()==0 else intersected_area / pD.area()
+            #             iouMat[gtNum,detNum] = get_intersection_over_union(pD,pG)
+            #             ###### NED score by MLT_task_4_1_0.py added 14/10/2021 ######
+            #             if gtRectMat[gtNum] == 0 and detRectMat[detNum] == 0 and gtNum not in gtDontCarePolsNum_NED and detNum not in detDontCarePolsNum_NED :
+            #                 if iouMat[gtNum,detNum]>evaluationParams['IOU_CONSTRAINT']:
+            #                     gtRectMat[gtNum] = 1
+            #                     detRectMat[detNum] = 1
+            #                     #detection matched only if transcription is equal (case insensitive)
+            #                     correct_ = gtTrans[gtNum] == detTrans[detNum]
+            #                     correctUpper = gtTrans[gtNum].upper() == detTrans[detNum].upper()
+                                
+            #                     detCorrect += (1 if correct_ else 0)
+            #                     detCorrectUpper += (1 if correctUpper else 0)
+            #                     if correctUpper:
+            #                         detMatchedNums.append(detNum)
+            #                     # pairs.append({'gt':[gtNum],'det':[detNum],'type':'','correct':correctUpper})
+            #                     evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + " trancription correct: " + str(correctUpper) + "\n"
+
+            #                     #Calculate also 1-NED
+            #                     distance = editdistance.eval(gtTrans[gtNum],detTrans[detNum])
+            #                     nedSum += 0 if len(gtTrans[gtNum])==0 and len(detTrans[detNum])==0 else float(distance) / max( len(gtTrans[gtNum]), len(detTrans[detNum]) )
+            #                     nedElements += 1
+            #                     distanceUpper = editdistance.eval(gtTrans[gtNum].upper(),detTrans[detNum].upper())
+            #                     nedSumUpper += 0 if len(gtTrans[gtNum])==0 and len(detTrans[detNum])==0 else float(distanceUpper) / max( len(gtTrans[gtNum]), len(detTrans[detNum]) )
+            #                     nedElementsUpper += 1
+
+            #             ############################################################
+
+            #     ############ Optimize for loop ############
+            #     for gtNum in range(len(gtPols)):
+            #         if gtRectMat[gtNum] == 0 and gtNum not in gtDontCarePolsNum_NED :
+            #             nedSum += 1
+            #             nedElements += 1
+            #             nedSumUpper += 1
+            #             nedElementsUpper += 1
+
+                
+            #     for detNum in range(len(detPols)):
+            #         if detRectMat[detNum] == 0 and detNum not in detDontCarePolsNum_NED :
+            #             nedSum += 1
+            #             nedElements += 1 
+            #             nedSumUpper += 1
+            #             nedElementsUpper += 1                            
+
+            #     # Find many-to-one matches
+            #     evaluationLog += "Find many-to-one matches\n"
+            #     for detNum in range(len(detPols)):
+            #         if detNum not in detDontCarePolsNum:
+            #             match, matchesGt = many_to_one_match(detNum,recallMat,precisionMat,gtPols,gtDontCarePolsNum,gtExcludeMat,detExcludeMat)
+            #             if match:
+            #                 pairs.append({'gt':matchesGt, 'det':[detNum], 'type':'MO'})
+            #                 evaluationLog += "Match GT #" + str(matchesGt) + " with Det #" + str(detNum) + "\n"
+                            
+            #     # Find one-to-one matches
+            #     evaluationLog += "Find one-to-one matches\n"
+            #     for gtNum in range(len(gtPols)):
+            #         for detNum in range(len(detPols)):
+            #             if gtNum not in gtDontCarePolsNum and detNum not in detDontCarePolsNum :
+            #                 match = one_to_one_match(gtNum, detNum,recallMat,precisionMat)
+            #                 if match:
+            #                     normDist = center_distance(gtPols[gtNum].polygon, detPols[detNum].polygon);
+            #                     normDist /= diag(gtPolPoints[gtNum]) + diag(detPolPoints[detNum]);
+            #                     normDist *= 2.0;
+            #                     if normDist < evaluationParams['EV_PARAM_IND_CENTER_DIFF_THR'] :
+            #                         pairs.append({'gt':[gtNum],'det':[detNum],'type':'OO'})
+            #                         evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + "\n"
+                                    
+            #     # Find one-to-many matches
+            #     evaluationLog += "Find one-to-many matches\n"
+            #     for gtNum in range(len(gtPols)):
+            #         if gtNum not in gtDontCarePolsNum:
+            #             match, matchesDet = one_to_many_match(gtNum,recallMat,precisionMat,detDontCarePolsNum,detPolPoints,gtExcludeMat,detExcludeMat,detTrans)
+            #             if match:
+            #                 pairs.append({'gt':[gtNum], 'det':matchesDet, 'type':'OM'})
+            #                 evaluationLog += "Match Gt #" + str(gtNum) + " with Det #" + str(matchesDet) + "\n"
+
+            #     # Fill match matrix
+            #     for pair in pairs:
+            #         matchMat[pair['gt'],pair['det']] = 1
+                
+            #     # Fill character matrix
+            #     char_fill(np.where(matchMat.sum(axis=0) > 0)[0], matchMat,detPols,gtCharPoints,gtCharCounts)
+
+            #     # Recall score
+            #     for gtNum in range(len(gtRectMat)):
+            #         if matchMat.sum(axis=1)[gtNum] > 0:
+            #             recallAccum += len(np.where(sum(gtCharCounts[gtNum]) == 1)[0]) / len(gtCharPoints[gtNum])
+            #             if len(np.where(sum(gtCharCounts[gtNum]) == 1)[0]) / len(gtCharPoints[gtNum]) < 1:
+            #                 recallScore.append("<font color=red>" + str(len(np.where(sum(gtCharCounts[gtNum]) == 1)[0])) + "/" + str(len(gtCharPoints[gtNum])) + "</font>")
+            #             else: recallScore.append(str(len(np.where(sum(gtCharCounts[gtNum]) == 1)[0])) + "/" + str(len(gtCharPoints[gtNum])))
+            #         else: recallScore.append("")
+
+            #     # Precision score
+            #     for detNum in range(len(detRectMat)):
+            #         if matchMat.sum(axis=0)[detNum] > 0:
+            #             detTotal = 0; detContain = 0
+            #             for gtNum in range(len(gtRectMat)):
+            #                 if matchMat[gtNum, detNum] > 0:
+            #                     detTotal += len(gtCharCounts[gtNum][detNum])
+            #                     detContain += len(np.where(gtCharCounts[gtNum][detNum] == 1)[0])
+            #             precisionAccum += detContain / detTotal
+            #             if detContain / detTotal < 1:
+            #                 precisionScore.append("<font color=red>" + str(detContain) + "/" + str(detTotal) + "</font>")
+            #             else: precisionScore.append(str(detContain) + "/" + str(detTotal))
+            #         else:
+            #             precisionScore.append("")
+
+            #     # Visualization
+            #     charCounts = np.zeros((len(gtRectMat), len(detRectMat)))
+            #     for gtNum in range(len(gtRectMat)):
+            #         for detNum in range(len(detRectMat)):
+            #             charCounts[gtNum][detNum] = sum(gtCharCounts[gtNum][detNum])
+
+
+            # if evaluationParams['CONFIDENCES']:
+            #     for detNum in range(len(detPols)):
+            #         if detNum not in detDontCarePolsNum :
+            #             match = detNum in detMatchedNums
+            #             arrSampleConfidences.append(confidencesList[detNum])
+            #             arrSampleMatch.append(match)
+            #             arrGlobalConfidences.append(confidencesList[detNum])
+            #             arrGlobalMatches.append(match)
+            '''
         numGtCare = (len(gtPols) - len(gtDontCarePolsNum))
         numDetCare = (len(detPols) - len(detDontCarePolsNum))
-
+        # print(len(gtPols))
+        # print(len(gtDontCarePolsNum))
+        # print(detCorrect)
+        # input()
         numGtCare_NED = (len(gtPols) - len(gtDontCarePolsNum_NED))
         numDetCare_NED = (len(detPols) - len(detDontCarePolsNum_NED))
 
@@ -601,11 +713,15 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             precision = float(0) if numDetCare >0 else float(1)
             sampleAP = precision
         else:
-            recall = float(recallAccum) / numGtCare
-            precision = float(0) if numDetCare==0 else float(precisionAccum) / numDetCare
-            if evaluationParams['CONFIDENCES'] and evaluationParams['PER_SAMPLE_RESULTS']:
-                sampleAP = compute_ap(arrSampleConfidences, arrSampleMatch, numGtCare )                    
-
+            # recall = float(recallAccum) / numGtCare
+            # precision = float(0) if numDetCare==0 else float(precisionAccum) / numDetCare
+            # if evaluationParams['CONFIDENCES'] and evaluationParams['PER_SAMPLE_RESULTS']:
+            #     sampleAP = compute_ap(arrSampleConfidences, arrSampleMatch, numGtCare )                    
+            recall = float(detCorrect) / numGtCare
+            precision = 0 if numDetCare==0 else float(detCorrect) / numDetCare
+            if evaluationParams['CONFIDENCES']:
+                sampleAP = compute_ap(arrSampleConfidences, arrSampleMatch, numGtCare )    
+        recallAccum, precisionAccum = recall, precision
         if numGtCare_NED == 0:
             ned = float(0) if numDetCare_NED >0 else float(1)
             nedUpper = float(0) if numDetCare_NED >0 else float(1)
@@ -659,8 +775,20 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                             'evaluationLog': evaluationLog
                                         }
             
+            temp_dict = {}
+            if validating_art:
+                # print("Here")
+                for key,val in perSampleMetrics_resfile.items():
+                    # print(key+" "+constraint_name)
+                    temp_dict[key+"_ART_"+constraint_name] = val
+                perSampleMetrics_resfile = {}
+                perSampleMetrics_resfile = temp_dict
+        existART = False
+        if True in artList:
+            existART = True
+        perSampleMetrics_resfile['existART'] = existART
         return recallAccum,precisionAccum,numGtCare,numDetCare,perSampleMetrics_resfile,arrGlobalConfidences,arrGlobalMatches,resFile,\
-                detCorrect,detCorrectUpper,numGtCare,numDetCare,nedSum,nedElements,nedSumUpper,nedElementsUpper
+                detCorrect,detCorrectUpper,numGtCare,numDetCare,nedSum,nedElements,nedSumUpper,nedElementsUpper,existART
 
 
     def calculatestar(args):
@@ -700,14 +828,15 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 methodRecallSum_perfile,methodPrecisionSum_perfile,numGlobalCareGt_perfile,numGlobalCareDet_perfile,\
                 perSampleMetrics_resfile,arrGlobalConfidences_perfile,arrGlobalMatches_perfile,resFile,\
                 detCorrect_perfile,detCorrectUpper_perfile,numGtCare_perfile,numDetCare_perfile, \
-                nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile= results
+                nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile, \
+                existART = results
                 
                 ### Regular tedeval return
                 methodRecallSum += methodRecallSum_perfile
                 methodPrecisionSum += methodPrecisionSum_perfile
                 numGlobalCareGt += numGlobalCareGt_perfile
                 numGlobalCareDet += numGlobalCareDet_perfile
-                perSampleMetrics[resFile] = perSampleMetrics_resfile
+                
                 arrGlobalConfidences.append(arrGlobalConfidences_perfile)
                 arrGlobalMatches.append(arrGlobalMatches_perfile)
 
@@ -716,14 +845,22 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 globalNedElements += nedElements_perfile
                 globalNedSumUpper += nedSumUpper_perfile
                 globalNedElementsUpper += nedElementsUpper_perfile
+                
+                ####
+                matchedSum += detCorrect_perfile
+                perSampleMetrics[resFile] = perSampleMetrics_resfile
                 pbar.update(1)
     # Compute MAP and MAR
     AP = 0
     if evaluationParams['CONFIDENCES']:
         AP = compute_ap(arrGlobalConfidences, arrGlobalMatches, numGlobalCareGt)
 
-    methodRecall = 0 if numGlobalCareGt == 0 else methodRecallSum/numGlobalCareGt
-    methodPrecision = 0 if numGlobalCareDet == 0 else methodPrecisionSum/numGlobalCareDet
+    # methodRecall = 0 if numGlobalCareGt == 0 else methodRecallSum/numGlobalCareGt
+    # methodPrecision = 0 if numGlobalCareDet == 0 else methodPrecisionSum/numGlobalCareDet
+    # methodHmean = 0 if methodRecall + methodPrecision==0 else 2* methodRecall * methodPrecision / (methodRecall + methodPrecision)
+
+    methodRecall = 0 if numGlobalCareGt == 0 else float(matchedSum)/numGlobalCareGt
+    methodPrecision = 0 if numGlobalCareDet == 0 else float(matchedSum)/numGlobalCareDet
     methodHmean = 0 if methodRecall + methodPrecision==0 else 2* methodRecall * methodPrecision / (methodRecall + methodPrecision)
 
     methodNed = 0 if globalNedElements==0 else 1 - float(globalNedSum)/globalNedElements;
