@@ -28,7 +28,7 @@ from PIL import Image
 from routes.image_route import image_blueprint
 from routes.sample_route import sample_blueprint
 
-from utils.utils import image_name_to_id, get_samples, get_sample_id_from_num
+from utils.utils import image_name_to_id, get_samples, get_sample_id_from_num, num_samples, samples_list
 
 from database.query import add_submission, edit_submission, init_database, get_submission, get_all_submissions, delete_submission
 
@@ -53,7 +53,7 @@ L.sort(key = lambda x: x.split('_')[1].split('.')[0].zfill(4))
 @app.route('/',methods=["GET","POST"])
 def index():
     
-    _,images_list = get_samples()
+    # _,images_list = num_samples, samples_list
 
     page = 1
     if 'p' in request.args:
@@ -71,7 +71,7 @@ def index():
     vars = {
             'acronym':acronym, 
             'title':title,
-            'images':images_list,
+            'images':samples_list,
             'method_params':method_params,
             'page':page,
             'subm_data':subm_data,

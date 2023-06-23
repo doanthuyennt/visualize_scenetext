@@ -3,14 +3,17 @@ import pathlib
 
 gTArchivePath = pathlib.Path("gt/gt.zip")
 gTArchive = zipfile.ZipFile(gTArchivePath,'r')
+imagesFilePath = pathlib.Path("gt/images.zip")
+imageArchive = zipfile.ZipFile(imagesFilePath,'r')
+image_list = list(imageArchive.namelist())
 
 
 def get_samples():
-    imagesFilePath = pathlib.Path("gt/images.zip")
-    archive = zipfile.ZipFile(imagesFilePath,'r')
+    
+    imageArchive = zipfile.ZipFile(imagesFilePath,'r')
     num_samples = 0
     samples_list = []
-    for image in archive.namelist():
+    for image in image_list:
         if image_name_to_id(image) != False:
             num_samples += 1
             samples_list.append(image)
@@ -38,3 +41,5 @@ def get_sample_id_from_num(num):
     #         if (current == num):
     #             return image_name_to_id(image)
     return image_name_to_id(nameList[num-1])
+
+num_samples, samples_list = get_samples() 

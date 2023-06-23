@@ -6,7 +6,8 @@ import json
 from flask import request, render_template
 from flask import Blueprint
 
-from utils.utils import get_samples, get_sample_id_from_num
+from utils.utils import get_samples, get_sample_id_from_num, num_samples
+from utils.utils import samples_list as images_list 
 
 from database.query import get_submission, get_all_submissions
 
@@ -20,7 +21,7 @@ sample_blueprint = Blueprint(
 @sample_blueprint.route('/sample/')
 def sample():
     
-    num_samples,images_list = get_samples()    
+    # num_samples,images_list = get_samples()    
 
     sample = int(request.args['sample'])
     methodId = request.args['m']
