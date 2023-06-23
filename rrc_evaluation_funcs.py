@@ -12,6 +12,8 @@ from io import StringIO
 from arg_parser import PARAMS
 import itertools
 
+import pathlib
+
 COORS_4            = '^'+ ','.join(['\s*(-?[0-9]+)\s*']*4)
 POINT_TRANS_CONF_4 = COORS_4 + ',\s*([0-1].?[0-9]*)\s*,(.*)$'
 POINT_TRANS_4      = COORS_4 + ',(.*)$'
