@@ -408,6 +408,7 @@ def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_met
     # for constraint_name,constraint_val in constraints.items():
     #     resDict['per_sample_'+constraint_name] = '{}'
     # validate_data_fn(p['g'], p['s'], evalParams)  
+    evalParams["save_name"] = str(pathlib.Path(p['o']) / 'results_{}.zip'.format(save_name))
     evalData = evaluate_method_fn(p['g'], p['s'], evalParams)
     resDict.update(evalData)
 
@@ -416,31 +417,17 @@ def main_evaluation(p,default_evaluation_params_fn,validate_data_fn,evaluate_met
             os.makedirs(p['o'])
 
         resultsOutputname = p['o'] + '/results_{}.zip'.format(save_name)
-        outZip = zipfile.ZipFile(resultsOutputname, mode='w', allowZip64=True)
-
         del resDict['per_sample']
         if 'output_items' in resDict.keys():
             del resDict['output_items']
 
-        outZip.writestr('method.json',json.dumps(resDict))
         
     if not resDict['calculated']:
         if show_result:
             sys.stderr.write('Error!\n'+ resDict['Message'])
-        if 'o' in p:
-            outZip.close()
         return resDict
     
-    if 'o' in p:
-        if per_sample == True:
-            for k,v in evalData['per_sample'].items():
-                outZip.writestr( k + '.json',json.dumps(v)) 
 
-            if 'output_items' in evalData.keys():
-                for k, v in evalData['output_items'].items():
-                    outZip.writestr( k,v) 
-
-        outZip.close()
 
     if show_result:
         sys.stdout.write("Calculated!")

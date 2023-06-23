@@ -13,6 +13,8 @@ from tqdm import tqdm
 import multiprocess as mp
 import editdistance
 import cv2
+import zipfile
+import json
 def evaluation_imports():
     """
     evaluation_imports: Dictionary ( key = module name , value = alias  )  with python modules used in the evaluation. 
@@ -309,12 +311,12 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             return 0
 
     # global evalute
-    def evalute(resFile,gt,subm,evaluationParams,validating_art=False,constraint_name=None):
+    def evalute(resFile,gtFile,detFile,evaluationParams,validating_art=False,constraint_name=None):
 
         arrGlobalConfidences = []
         arrGlobalMatches = []
         
-        gtFile = rrc_evaluation_funcs.decode_utf8(gt[resFile])
+        # gtFile = rrc_evaluation_funcs.decode_utf8(gt[resFile])
         recall = 0
         precision = 0
         hmean = 0    
@@ -421,9 +423,10 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         #         if get_intersection(gtPols[gtNum].polygon, gtPols[DontCare].polygon) > 0:
         #             gtPols[DontCare].polygon -= gtPols[gtNum].polygon
 
-        if resFile in subm:
+        if True:
+        # if resFile in subm:
             
-            detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
+            # detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
 
             pointsList,_,transcriptionsList,artList = rrc_evaluation_funcs.get_tl_line_values_from_dict(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
             # pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['DET_CRLF'],evaluationParams['DET_LTRB'],evaluationParams['TRANSCRIPTION'],evaluationParams['CONFIDENCES'])
@@ -790,12 +793,12 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         return recallAccum,precisionAccum,numGtCare,numDetCare,perSampleMetrics_resfile,arrGlobalConfidences,arrGlobalMatches,resFile,\
                 detCorrect,detCorrectUpper,numGtCare,numDetCare,nedSum,nedElements,nedSumUpper,nedElementsUpper,existART
 
-
-    def calculatestar(args):
-        def calculate(func, args):
-            result = func(*args)
-            return result
-        return calculate(*args)
+    def calculatestar(batch):
+        results = []
+        for args in batch:
+            result = args[0](*args[1])
+            results.append(result)
+        return results
     perSampleMetrics = {}
     
     methodRecallSum = 0
@@ -821,15 +824,20 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     ### TODO : Optimize using concurrent
 
     ### Assign jobs
-    TASKS = [(evalute, (resFile,gt,subm,evaluationParams)) for resFile in gt]
+    TASKS = [(evalute, (resFile,gt[resFile],subm[resFile] ,evaluationParams)) for resFile in gt]
+    resultsOutputname = evaluationParams.get("save_name")
+    outZip = zipfile.ZipFile(resultsOutputname, mode='w', allowZip64=True)
+    pbar = tqdm(total = len(gt))
     with mp.Pool(processes=PARAMS.NUM_WORKERS) as pool:
-        with tqdm(total = len(gt)) as pbar:
-            for results in pool.map(calculatestar,TASKS):
+        batch = [TASKS[i:i+PARAMS.NUM_WORKERS] for i in range(0, len(TASKS), PARAMS.NUM_WORKERS )]
+        for results in pool.imap_unordered(calculatestar,batch):
+            pbar.update(PARAMS.NUM_WORKERS)
+            for results_ in results:
                 methodRecallSum_perfile,methodPrecisionSum_perfile,numGlobalCareGt_perfile,numGlobalCareDet_perfile,\
                 perSampleMetrics_resfile,arrGlobalConfidences_perfile,arrGlobalMatches_perfile,resFile,\
                 detCorrect_perfile,detCorrectUpper_perfile,numGtCare_perfile,numDetCare_perfile, \
                 nedSum_perfile,nedElements_perfile,nedSumUpper_perfile,nedElementsUpper_perfile, \
-                existART = results
+                existART = results_
                 
                 ### Regular tedeval return
                 methodRecallSum += methodRecallSum_perfile
@@ -848,8 +856,13 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                 
                 ####
                 matchedSum += detCorrect_perfile
-                perSampleMetrics[resFile] = perSampleMetrics_resfile
-                pbar.update(1)
+                outZip.writestr(
+                    f"{resFile}.json",
+                    json.dumps(
+                        perSampleMetrics_resfile
+                    )
+                )
+                # perSampleMetrics[resFile] = perSampleMetrics_resfile
     # Compute MAP and MAR
     AP = 0
     if evaluationParams['CONFIDENCES']:
@@ -868,8 +881,13 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     
     methodMetrics = {'recall':methodRecall, 'precision':methodPrecision, 'hmean':methodHmean, 'AP':AP, 'ned':methodNed, 'nedUpped':methodNedUpper  }
     
-    resDict = {'calculated':True,'Message':'','method': methodMetrics,'per_sample': perSampleMetrics}
-    
+    resDict = {
+        'calculated':True,'Message':'',
+        'method': methodMetrics,
+        # 'per_sample': perSampleMetrics
+    }
+    outZip.writestr('method.json',json.dumps(resDict))
+    outZip.close()
     # # Repeat
     # from config.config import constraints
     # for constraint_name,constraint_val in constraints.items():
